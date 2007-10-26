@@ -489,51 +489,24 @@ class MyFrame(wx.Frame):
         self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
         self.splitter.SetMinimumPaneSize(1)
         
-        #FileMenu = wx.Menu()
-        #FileMenu.Append(ID_SELECT,"&Open image","Open an image")
-        #FileMenu.Append(ID_CALIPER,"&Save image","Save the image")
-        #FileMenu.AppendSeparator()
-        #FileMenu.Append(ID_EXIT,"E&xit","Terminate the program")
-        
-        #EditMenu = wx.Menu()
-        #EditMenu.Append(ID_CALIB,"&Calibrate","Calibrate time scale")
-        
-        #HelpMenu = wx.Menu()
-        #HelpMenu.Append(ID_ABOUT,"&About","More information about this program")
-
-        #menuBar = wx.MenuBar()
-        #menuBar.Append(FileMenu, "&File");
-        #menuBar.Append(EditMenu, "&Edit");
-        #menuBar.Append(HelpMenu, "&Help");
-        #self.SetMenuBar(menuBar)
-        
-        tsize = (16,16)
-        
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
+        self.toolbar.SetToolBitmapSize((20,20))
 
-        self.toolbar.AddSimpleTool(ID_SELECT,wx.Bitmap("icons/open.png", 
-                                   wx.BITMAP_TYPE_PNG), "Open") 
+        self.toolbar.AddLabelTool(ID_SELECT, 'Open',wx.Bitmap("icons/open.png"))
         
         self.toolbar.AddSeparator()
-        self.toolbar.AddSimpleTool(ID_CALIB,wx.Bitmap("icons/calibrate.png",
-                                   wx.BITMAP_TYPE_PNG),"Calibrate")
-        self.toolbar.AddSimpleTool(ID_CALIPER,wx.Bitmap("icons/calipers.png",
-                                   wx.BITMAP_TYPE_PNG),"Caliper")
-        self.toolbar.AddSimpleTool(ID_REMOVE,wx.Bitmap("icons/remove_calipers.png",
-                                   wx.BITMAP_TYPE_PNG),"Remove Caliper")
-        self.toolbar.AddSimpleTool(ID_STAMP,wx.Bitmap("icons/stamp_calipers.png",
-                                   wx.BITMAP_TYPE_PNG),"Stamp Caliper")
-        
+        self.toolbar.AddLabelTool(ID_CALIB, 'Calibrate',wx.Bitmap("icons/calibrate.png"))
+        self.toolbar.AddLabelTool(ID_CALIPER, 'Caliper',wx.Bitmap("icons/calipers.png"))
+        self.toolbar.AddLabelTool(ID_REMOVE, 'Remove Caliper',wx.Bitmap("icons/remove_calipers.png"))
+        self.toolbar.AddLabelTool(ID_STAMP, 'Stamp Caliper',wx.Bitmap("icons/stamp_calipers.png"))
+
         self.toolbar.AddSeparator()
-        self.toolbar.AddSimpleTool(ID_PREV,wx.Bitmap("icons/previous.png",
-                                   wx.BITMAP_TYPE_PNG),"Previous")
-        self.toolbar.AddSimpleTool(ID_NEXT,wx.Bitmap("icons/next.png",
-                                   wx.BITMAP_TYPE_PNG),"Next")
-        
-        self.toolbar.AddSimpleTool(ID_SAVE,wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE,
-                                   wx.ART_TOOLBAR, tsize), "Save")
-        self.toolbar.AddSimpleTool(ID_EXIT,wx.ArtProvider.GetBitmap(wx.ART_QUIT,
-                                   wx.ART_TOOLBAR, tsize), "Exit")
+        self.toolbar.AddLabelTool(ID_PREV, 'Previous',wx.Bitmap("icons/previous.png"))
+        self.toolbar.AddLabelTool(ID_NEXT, 'Next',wx.Bitmap("icons/next.png"))
+        self.toolbar.AddLabelTool(ID_SAVE, 'Save',wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE,
+                                   wx.ART_TOOLBAR))
+        self.toolbar.AddLabelTool(ID_EXIT, 'Exit',wx.ArtProvider.GetBitmap(wx.ART_QUIT,
+                                   wx.ART_TOOLBAR))
 
         self.toolbar.Realize()
         
