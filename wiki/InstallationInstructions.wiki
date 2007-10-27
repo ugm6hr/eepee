@@ -13,12 +13,13 @@ You can save the file in a folder ('C:\Program files\eepee', for example) and ke
 
 = Archive =
 
-Requirements:
-  Python >= 2.4
-  WxPython 
-  Python Imaging Library
+== Requirements: ==
+  * Python >= 2.4
+  * WxPython 
+  * Python Imaging Library
 
-To install, download the archive and extract it.
-Then run the setup.py as follows
-  __python setup.py install__
+== To install ==
+  * Download the archive and extract it.
+  * Then run the setup.py as follows
+  * python setup.py install
   
