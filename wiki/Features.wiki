@@ -1,0 +1,19 @@
+#summary Included and Planned features
+
+= Included features =
+
+* Can open images in '.png', 'tiff', '.jpeg', or '.bmp' formats.
+* Allows calibration of the calipers against a scale in the image.
+* Calipers can be resized or moved.
+* Caliper and the measurement can be  'stamped' on the image
+* Image with the 'stamped' calipers can be stored
+* Notes can be stored for each image - notes are automatically stored.
+* 'Playlist' is automatically created with the image files in the selected directory.
+
+= Planned features =
+
+* Printing of modified images
+* Enable custom playlists
+* Calibration will be saved so image doesnt have to recalibrated
+* Ability to make laddergrams
+* Ability to make simple 'slides' with question / answers
