@@ -15,5 +15,6 @@
   * Printing of modified images
   * Enable custom playlists
   * Calibration will be saved so image doesnt have to recalibrated
+  * Zoom into a selected 'frame' within the image
   * Ability to make laddergrams
   * Ability to make simple 'slides' with question / answers
