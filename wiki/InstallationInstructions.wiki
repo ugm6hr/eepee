@@ -11,6 +11,8 @@ An installer is not currently available.
 Just download the exe file from the downloads page and click on it to run.
 You can save the file in a folder ('C:\Program files\eepee', for example) and keep a shortcut on the desktop to run it.
 
+Tested only with Windows XP so far.
+
 = Archive =
 
 == Requirements: ==
