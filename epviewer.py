@@ -11,24 +11,27 @@ TITLE          = "EP viewer"
 ABOUT          = "An application to view and analyze EP tracings \n" \
                  "Author: Raja S. \n rajajs@gmail.com"
 
+#------------------------------------------------------------------------
 #wx IDs
-ID_APP         = wx.NewId()
-ID_ABOUT       = wx.NewId()
-ID_SELECT      = wx.NewId()
-ID_CALIB         = wx.NewId()
-ID_CALIPER        = wx.NewId()
-ID_EXIT        = wx.NewId()
-ID_TEXT        = wx.NewId()
-ID_STAMP       = wx.NewId()
-ID_REMOVE      = wx.NewId()
-#ID_PLAYLIST      = wx.NewId()
-ID_PREV = wx.NewId()
-ID_NEXT = wx.NewId()
-ID_JUMP = wx.NewId()
-ID_SAVE = wx.NewId()
+
+ID_ABOUT    =   wx.NewId()
+ID_SELECT   =   wx.NewId()
+ID_CALIB    =   wx.NewId()
+ID_CALIPER  =   wx.NewId()
+ID_EXIT     =   wx.NewId()
+ID_TEXT     =   wx.NewId()
+ID_STAMP    =   wx.NewId()
+ID_REMOVE   =   wx.NewId()
+ID_PREV     =   wx.NewId()
+ID_NEXT     =   wx.NewId()
+ID_JUMP     =   wx.NewId()
+ID_SAVE     =   wx.NewId()
+#--------------------------------------------------------------------------
 
 
+#--------------------------------------------------------------------------
 class PlayList():
+
     def __init__(self,filename):
         self.playlist = []
         self.nowshowing = 0   #current position in list
@@ -86,8 +89,12 @@ class PlayList():
         """
         self.playlist = playlistfile.read().split('\n')
         #FIXME: May have to remove spaces
-    
+#-------------------------------------------------------------------------------
+
+
+#--------------------------------------------------------------------------------    
 class NotePad(wx.Panel):
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.notes = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE,)
@@ -113,8 +120,12 @@ class NotePad(wx.Panel):
         same name as image with suffix 'note'
         """
         self.notes.SaveFile(self.notefile)          
-        
+#--------------------------------------------------------------------------------        
+
+
+#-------------------------------------------------------------------------------
 class Caliper():
+
     def __init__(self):
         #initialize flags
         self.CALIBRATE = "False"
@@ -346,7 +357,10 @@ class Caliper():
         else:
             self.displaydistance = self.distance
         self.measurement = ' '.join((str(int(self.displaydistance)),self.units))
-                        
+#----------------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------------                        
 #The custom window
 class CustomWindow(wx.Window):
     
@@ -375,18 +389,13 @@ class CustomWindow(wx.Window):
         #Calipers and not calibrate, second caliper
         elif self.caliper.STATUS == "Second" and self.caliper.CALIBRATE == "False":
             self.caliper.ClickRight()
-            #self.toolbar.EnableTool(ID_CALIPER, True)
-            #self.toolbar.EnableTool(ID_CALIB, True)
             self.frame.toolbar.EnableTool(ID_REMOVE, True)
             self.frame.toolbar.EnableTool(ID_STAMP, True)
-            #self.toolbar.EnableTool(ID_PREV, False)
-            #self.toolbar.EnableTool(ID_NEXT, False)
         
         #calibrate, second
         elif self.caliper.STATUS == "Second" and  self.caliper.CALIBRATE == "True":
             dc = wx.ClientDC(self)
             self.caliper.ClickCalibrate(dc)
-            
             self.caliper.STATUS = "None"
             self.caliper.CALIBRATE = "False"
             
@@ -475,11 +484,15 @@ class CustomWindow(wx.Window):
             memdc.SelectObject(self.bmp)
             dc.Blit(0,0,self.GetSize()[0]-self.frame.sidepanelsize,self.GetSize()[1],memdc,0,0)
             self.prevpos =wx.Point(0,0)
-                
+#-----------------------------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------------------------               
 class MyFrame(wx.Frame):
+
     def __init__(self, parent, id, title):
 
-        wx.Frame.__init__(self, parent, ID_APP, title,pos=(0,0),style =
+        wx.Frame.__init__(self, parent, -1, title,pos=(0,0),style =
                               wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
         self.sb = wx.StatusBar(self)    #StatusBar(self)
@@ -687,22 +700,6 @@ class MyFrame(wx.Frame):
             self.DisplayImage(img)
 
     def SaveImage(self, event):
-        dlg = wx.FileDialog(self, "Save image as...", os.getcwd(),
-                            style=wx.SAVE | wx.OVERWRITE_PROMPT,
-                            wildcard = self.wildcard)
-        if dlg.ShowModal() == wx.ID_OK:
-            filename = dlg.GetPath()
-
-        if not os.path.splitext(filename)[1]:
-            filename = filename + '.png'
-
-        self.savefilename = filename
-        
-        self.WriteImage()
-        dlg.Destroy()
-
-    def WriteImage(self):
-        
         context = wx.ClientDC(self.panel)
         savebmp = wx.EmptyBitmap(self.imagewidth,self.imageheight)
         #convert dc to bitmap
@@ -710,8 +707,22 @@ class MyFrame(wx.Frame):
         memdc.SelectObject(savebmp)
         memdc.Blit(0,0,self.imagewidth,self.imageheight,context,0,0)
         memdc.SelectObject(wx.NullBitmap)
+
+        dlg = wx.FileDialog(self, "Save image as...", os.getcwd(),
+                            style=wx.SAVE | wx.OVERWRITE_PROMPT,
+                            wildcard = self.wildcard)
+        if dlg.ShowModal() == wx.ID_OK:
+            savefilename = dlg.GetPath()
+        dlg.Destroy()
+
+        if not os.path.splitext(savefilename)[1]:
+            savefilename += '.png'
+
+        savebmp.SaveFile(savefilename,wx.BITMAP_TYPE_PNG)
+
+#    def WriteImage(self):
+        
         #save it to file
-        savebmp.SaveFile(self.savefilename,wx.BITMAP_TYPE_PNG)
 
     def GetBmpfromPIL( self,img ):
         self.imsmall = Image.open( img, 'r')
@@ -719,7 +730,10 @@ class MyFrame(wx.Frame):
         image = apply( wx.EmptyImage, self.imsmall.size )
         image.SetData( self.imsmall.convert( "RGB").tostring() )
         return image.ConvertToBitmap() # wxBitmapFromImage(image)
+#-----------------------------------------------------------------------------------------------------------
 
+
+##----------------------------------------------------------------------------------------------------------
 ##Embedded icon images generated by img2py
 ##------------------------------------------------    
 from wx import ImageFromStream, BitmapFromImage
@@ -945,16 +959,17 @@ def getSaveBitmap():
 def getSaveImage():
     stream = cStringIO.StringIO(getSaveData())
     return ImageFromStream(stream)
+#---------------------------------------------------------------------------------------------------
     
 #----------------------------------------------------------------------
-
 class MyApp(wx.App):
+
     def OnInit(self):
-        frame = MyFrame(None, ID_APP, TITLE)
+        frame = MyFrame(None, -1, TITLE)
         frame.Show(1)
         self.SetTopWindow(frame)
         return 1
+#--------------------------------------------------------------------------------------------------
 
 app = MyApp(0)
 app.MainLoop()
-
