@@ -8,8 +8,12 @@ import wx, Image, os, copy
 from wx.lib.imagebrowser import *
 
 TITLE          = "EP viewer"
-ABOUT          = "An application to view and analyze EP tracings \n" \
-                 "Author: Raja S. \n rajajs@gmail.com"
+ABOUT          = """ 
+An application to view and analyze EP tracings\n   
+Author: Raja S. \n 
+rajajs@gmail.com\n 
+For more information and for updates visit\n  
+http:\\code.google.com\p\eepee"""
 
 #------------------------------------------------------------------------
 #wx IDs
@@ -97,7 +101,9 @@ class NotePad(wx.Panel):
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
-        self.notes = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE,)
+        self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
+        self.pad.Clear()
+        self.parentframe = wx.GetTopLevelParent(self) #top level parent to set statustext
         
     def FillNote(self,imagefilename):
         """
@@ -106,27 +112,95 @@ class NotePad(wx.Panel):
         have been stored
         """
         (w,h) = self.GetSize()#because GetSize doesnt work in init
-        self.notes.SetSize(( w*0.6 ,h*0.9 )) 
-        self.notes.SetPosition(( w*0.2 ,h*0.05 )) #Now I have a nicely centered potrait page
-        self.notefile = '.'.join((imagefilename.split('.')[0],'note'))
+        self.pad.SetSize(( w*0.6 ,h*0.9 )) 
+        self.pad.SetPosition(( w*0.2 ,h*0.05 )) #Now I have a nicely centered potrait page
+        self.notefile = '.'.join((imagefilename.split('.')[0],'note')) #FIXME: What if imagename has a '.'
         if os.path.exists(self.notefile):
-            self.notes.LoadFile(self.notefile)
+            self.parseNote()
+            self.pad.write(self.notes)
+           
         else:   #else start empty
-            self.notes.Clear()
+            self.notes = ''
+            self.frame = [0,0,0,0]
+            self.parentframe.panel.caliper.calib = 0
+            self.pad.Clear()
+            
+        print 'notes at init', self.notes
             
     def SaveNote(self):
         """
         Save the note to the file with 
         same name as image with suffix 'note'
         """
-        self.notes.SaveFile(self.notefile)          
+        self.notes = self.pad.GetValue()
+        print "Am saving", self.notes
+        
+        fi = open(self.notefile,'w')
+        
+        fi.write('[Calibration]\n') #FIXME: Have to make sure this works in windows
+        fi.write(str(self.parentframe.panel.caliper.calib)+'\n')
+        
+        fi.write('[Frame]\n')
+        fi.write('%s,%s,%s,%s\n' % (self.frame[0],self.frame[1],self.frame[2],self.frame[3]))
+        
+        fi.write('[Notes]\n')
+        fi.write(self.notes)
+        
+        print 'notes on save', self.notes
+        
+        fi.close()
+        
+    def parseNote(self): 
+    	"""
+    	Parse the stored note and extract the information
+    	Notes can be a multi-line entry and will be stored at 
+    	the end of the file.
+    	Single line entries come before. All have a header of the form
+    	'[title]' and the data itself should come on the next line.
+    	There can, however be empty lines at the beginning, between the different
+    	entries or in between the text in the notes.
+    	"""
+    	lines_to_parse = open(self.notefile,'r').readlines()
+    	print lines_to_parse
+    	linecount = 0
+    	
+    	try:
+    	    while '[Calibration]' not in lines_to_parse[linecount]:
+                linecount += 1
+            linecount += 1
+            self.parentframe.panel.caliper.calib = float(lines_to_parse[linecount]) #calib is a single value
+            #self.parentframe.panel.caliper.units = 'ms'
+            
+            while '[Frame]' not in lines_to_parse[linecount]:
+                linecount += 1
+            linecount += 1
+            self.frame = lines_to_parse[linecount].split(',')
+            self.frame = [int(x) for x in self.frame] # A list of four numbers - x,y for upper left and lower right
+    
+            while '[Notes]' not in lines_to_parse[linecount]:
+                linecount += 1
+            self.notes = ''.join(lines_to_parse[linecount+1:])
+        
+        #if there any errors in parsing (also covers the notes made with prev versions),
+        #load the entire contents and allow user to edit
+        except: 
+            print "failed to parse"
+            self.notes = ''.join(lines_to_parse[:])
+            self.frame = [0,0,0,0]
+            print self.notes 
+            
+        if self.parentframe.panel.caliper.calib == 0:
+            self.parentframe.panel.caliper.units = 'pixels'
+        else:
+            self.parentframe.panel.caliper.units = 'ms'
+    	
 #--------------------------------------------------------------------------------        
 
 
 #-------------------------------------------------------------------------------
 class Caliper():
 
-    def __init__(self):
+    def __init__(self,parent):
         #initialize flags
         self.CALIBRATE = "False"
         self.STATUS = "None"
@@ -137,6 +211,9 @@ class Caliper():
         self.horiz_y = 0
         self.prev_x = 0
         self.prev_y = 0
+        self.calib = 0
+        
+        #self.parentframe = wx.GetTopLevelParent(self)
         
         #initialize pen
         self.pen =wx.Pen(wx.Colour(255, 255, 255), 1, wx.SOLID)
@@ -184,7 +261,7 @@ class Caliper():
         dialog = wx.TextEntryDialog(None, "Enter distance in ms:","Calibrate")
         if dialog.ShowModal() == wx.ID_OK:
             cal = dialog.GetValue()
-            self.calibscale = int(cal)/self.distance  #multiply pixels by scale to get ms
+            self.calib = int(cal)/self.distance  #multiply pixels by scale to get ms
             self.units = "ms"
         dialog.Destroy() 
         
@@ -353,7 +430,7 @@ class Caliper():
         #print self.left_x, self.right_x
         self.distance = abs(self.left_x-self.right_x)  
         if self.units == "ms":
-            self.displaydistance = self.distance*self.calibscale
+            self.displaydistance = self.distance*self.calib
         else:
             self.displaydistance = self.distance
         self.measurement = ' '.join((str(int(self.displaydistance)),self.units))
@@ -377,7 +454,7 @@ class CustomWindow(wx.Window):
         wx.EVT_PAINT(self, self.OnPaint)
         
         self.units = "pixels" #default when we start
-        self.caliper = Caliper()
+        self.caliper = Caliper(self)
 
     def OnClick(self,event):
         
@@ -492,45 +569,44 @@ class MyFrame(wx.Frame):
 
     def __init__(self, parent, id, title):
 
-        wx.Frame.__init__(self, parent, -1, title,pos=(0,0),style =
-                              wx.DEFAULT_FRAME_STYLE)
+        wx.Frame.__init__(self, parent, -1, title,pos=(0,0),style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
-        self.sb = wx.StatusBar(self)    #StatusBar(self)
+        self.sb = wx.StatusBar(self)  
         self.SetStatusBar(self.sb)
 
-        self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
-        self.splitter.SetMinimumPaneSize(1)
-        
+        ##--------------TOOLBAR------------------------------------------------------##
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((20,20))
 
-        self.toolbar.AddLabelTool(ID_SELECT, 'Open',getOpenBitmap())
-        
+        self.toolbar.AddLabelTool(ID_SELECT  , 'Open'           ,  getOpenBitmap())
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_CALIB, 'Calibrate',getCalibrateBitmap())
-        self.toolbar.AddLabelTool(ID_CALIPER, 'Caliper',getCalipersBitmap())
-        self.toolbar.AddLabelTool(ID_REMOVE, 'Remove Caliper',getRemoveCalipersBitmap())
-        self.toolbar.AddLabelTool(ID_STAMP, 'Stamp Caliper',getStampCalipersBitmap())
-
+        self.toolbar.AddLabelTool(ID_CALIB   , 'Calibrate'      ,  getCalibrateBitmap())
+        self.toolbar.AddLabelTool(ID_CALIPER , 'Caliper'        ,  getCalipersBitmap())
+        self.toolbar.AddLabelTool(ID_REMOVE  , 'Remove Caliper' ,  getRemoveCalipersBitmap())
+        self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'  ,  getStampCalipersBitmap())
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_PREV, 'Previous',getPreviousBitmap())
-        self.toolbar.AddLabelTool(ID_NEXT, 'Next',getNextBitmap())
-        self.toolbar.AddLabelTool(ID_SAVE, 'Save',getSaveBitmap())
-        self.toolbar.AddLabelTool(ID_EXIT, 'Exit',wx.ArtProvider.GetBitmap(wx.ART_QUIT,
-                                   wx.ART_TOOLBAR))
-
+        self.toolbar.AddLabelTool(ID_PREV    , 'Previous'       ,  getPreviousBitmap())
+        self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           ,  getNextBitmap())
+        self.toolbar.AddLabelTool(ID_SAVE    , 'Save'           ,  getSaveBitmap())
+        self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           ,  getExitBitmap())
+        self.toolbar.AddLabelTool(ID_ABOUT  , 'About'          ,  getAboutBitmap())
         self.toolbar.Realize()
-        
+        ##----------------------------------------------------------------------------##
+
+        ##-----------SPLITTER----------------------------------------------------------##                
+        self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
+        self.splitter.SetMinimumPaneSize(1)
         self.notebookpanel = wx.Panel(self.splitter,-1)
-        nb = wx.Notebook(self.notebookpanel)
-        self.panel = CustomWindow(nb,-1)
-        self.notepad = NotePad(nb)
-        
         self.list = wx.ListBox(self.splitter,-1)
         self.list.Show(True)
-        
         self.splitter.SplitVertically(self.notebookpanel,self.list)
         self.splitter.Unsplit() #I dont know the size yet
+        ##----------------------------------------------------------------------------##
+
+        ##-----------NOTEBOOK--------------------------------------------------------##
+        nb = wx.Notebook(self.notebookpanel)
+        self.notepad = NotePad(nb)
+        self.panel = CustomWindow(nb,-1)
         
         nb.AddPage(self.panel, "Tracing")
         nb.AddPage(self.notepad, "Notes")
@@ -538,6 +614,7 @@ class MyFrame(wx.Frame):
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
         self.notebookpanel.SetSizer(sizer)
+        ##----------------------------------------------------------------------------##        
         
         wx.EVT_MENU(self,  ID_ABOUT,   self.About)
         wx.EVT_MENU(self,  ID_SELECT,  self.ChooseImage)
@@ -550,11 +627,10 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_PREV,    self.PrevOnList)
         wx.EVT_MENU(self,  ID_NEXT,    self.NextOnList)
         wx.EVT_MENU(self,  ID_SAVE,    self.SaveImage)
-        
-        self.Bind(wx.EVT_LISTBOX_DCLICK, self.JumpInList)
-        
         wx.EVT_CLOSE(self, self.OnClose)
                 
+        self.Bind(wx.EVT_LISTBOX_DCLICK, self.JumpInList)
+        
         self.wildcard = "PNG files (*.png)|*.png|All files (*.*)|*.*"
         self.RESIZE_FLAG = "TRUE"
         self.rootdir = os.getcwd()
@@ -562,27 +638,30 @@ class MyFrame(wx.Frame):
         self.BITMAP_FLAG = "notexists"
         self.panel.bmp = None
         self.sidepanelsize = 60 #side of the panel showing playlist
-        
-        
         self.IMAGE_SELECTED = "False"  #Has an image been selected yet?
         self.width = 0 #not initialized
         
         self.InitializeAll()
         
     def InitializeAll(self):
+        """
+        Values that have to be initialized
+        for every new image
+        """
         
         self.panel.CALIPERFLAG = "False"
         self.panel.caliper.CALIBRATE = "False"
         self.panel.caliper.STATUS = "None"
         self.panel.caliper.CALIPERMOVE = "None"
         
+        
         #disable these icons initially
-        self.toolbar.EnableTool(ID_CALIPER, False)
-        self.toolbar.EnableTool(ID_CALIB, False)
-        self.toolbar.EnableTool(ID_REMOVE, False)
-        self.toolbar.EnableTool(ID_STAMP, False)
-        self.toolbar.EnableTool(ID_PREV, False)
-        self.toolbar.EnableTool(ID_NEXT, False)
+        self.toolbar.EnableTool(ID_CALIPER , False)
+        self.toolbar.EnableTool(ID_CALIB   , False)
+        self.toolbar.EnableTool(ID_REMOVE  , False)
+        self.toolbar.EnableTool(ID_STAMP   , False)
+        self.toolbar.EnableTool(ID_PREV    , False)
+        self.toolbar.EnableTool(ID_NEXT    , False)
 
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
@@ -596,7 +675,7 @@ class MyFrame(wx.Frame):
         self.playlist.nowshowing -= 1
         if self.playlist.nowshowing < 0: 
             self.playlist.nowshowing = len(self.playlist.playlist)-1
-        
+       
         self.InitializeAll()
         self.list.SetSelection(self.playlist.nowshowing)
         self.DisplayImage(self.playlist.playlist[self.playlist.nowshowing])
@@ -605,8 +684,9 @@ class MyFrame(wx.Frame):
         self.playlist.nowshowing += 1
         if self.playlist.nowshowing > len(self.playlist.playlist)-1:
             self.playlist.nowshowing = 0  
-            
+        
         self.InitializeAll()
+
         self.list.SetSelection(self.playlist.nowshowing)
         self.DisplayImage(self.playlist.playlist[self.playlist.nowshowing])
   
@@ -654,6 +734,7 @@ class MyFrame(wx.Frame):
         #If there was an image before, save the note 
         if self.IMAGE_SELECTED == "TRUE":
             self.notepad.SaveNote()
+            self.notepad.pad.Clear()
         else:
             self.IMAGE_SELECTED = "TRUE"
         
@@ -686,7 +767,7 @@ class MyFrame(wx.Frame):
         self.list.SetSelection(self.playlist.nowshowing)
     
     def ChooseImage(self,event):
-        dlg = ImageDialog(self,self.rootdir);
+        dlg = ImageDialog(self,self.rootdir) #FIXME: May change to directory/file chooser / restrict formats
         if dlg.ShowModal() == wx.ID_OK:
             img = dlg.GetFile()
             
@@ -700,6 +781,14 @@ class MyFrame(wx.Frame):
             self.DisplayImage(img)
 
     def SaveImage(self, event):
+        """
+        Save the modified DC as an image.
+        Blit the clientdc to a memory dc. The memory dc is initialized
+        to an empty bitmap. Now, we can disconnect the bitmap from the memory dc
+        and save it. 
+        I copy the clientDC out before getting the savefilename because
+        the 'shadow' of the save dialog results in a white area on the saved image.
+        """
         context = wx.ClientDC(self.panel)
         savebmp = wx.EmptyBitmap(self.imagewidth,self.imageheight)
         #convert dc to bitmap
@@ -960,7 +1049,103 @@ def getSaveImage():
     stream = cStringIO.StringIO(getSaveData())
     return ImageFromStream(stream)
 #---------------------------------------------------------------------------------------------------
-    
+#----------------------------------------------------------------------
+def getAboutData():
+    return zlib.decompress(
+"x\xda\x011\x02\xce\xfd\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x14\
+\x00\x00\x00\x14\x08\x06\x00\x00\x00\x8d\x89\x1d\r\x00\x00\x00\x04sBIT\x08\
+\x08\x08\x08|\x08d\x88\x00\x00\x01\xe8IDAT8\x8d\xbd\xd4\xcd\x8b\x8da\x18\xc7\
+\xf1\xcf\xf5<\xe7\x9c\xf12\xcc\xa8I1B\xb1@\xcc\x86\xd2\xb0\xb5\x90\x94\x15\
+\x8b))\x0bQ(\x7f\xc9,f\x94,d\xc1\x02%\x0be#MM:\x8c\x9a\xa6l4^Bj\xa6\xbcdR\
+\x8e\x1a\xe7\xb9-\x8e43g\xce\x1c/\xe5\xb7y\xba\xaf\xe7\xfe\xfd\xfav]w\x17\
+\xffE\x03\xd7\xdb\xdfy|\x1bG\x9b\xca\xd1\xd2\xb0\xeb\x10]\x9bB\xbd\x9c\x89<$\
+!\xa5$\xaf\xd7=\x1cJ`\xea!\xeb\xf6\xcf\xb3\x95Z\x06\x96V\x96\xa4l\x8d\xd0\
+\x8b\x9e\x9fwg\x887\x98Bj\x84\x1d\xc5\xad\xdf \xdcwn;\xa5S\xd8-t\xa2$\xa9\
+\x11\xcf\xa4tC\xed\xfb\xa8\x89\xa1/M\x1c-\x03e\x15t\x12\x9f\xa4\xf4V\xe8\x12\
+\xb6I\xe9\x88\xb0\\G\xf6\x1eO\x16\xba\xf2\x96y\x1b\xf6\x05\xe9\xb3\x88\x11\
+\x85{\xa2\x18\x172\xa2\x9fX/\x8c\xe9\xd9\xf9\xc2\xf4\xf8\xf7\xa5\t\xfb/P\x1d\
+\xa4:8\x8d{\xbf\xea{O\xbe\x96\xaf\xde\x8c\x19\x91\nI\x905\xb5,[\x94\xeeej\
+\xaeE\xe7V\x11\xfb\xd1%\xc5\xb8TL\x9a\xb8\\k\x1fX\x1ddKp\xf8\xd2\x1c\xea\xb3\
+\xbd\xf2\xec\x18\x0eb\x92\xe2*\xc5\xf3\xc5X\x16'\x84\xbb\xa7\x1b\xdf\xde\x93\
+!J\x07\x88\xc3\xc8\xa5tM\x9a\x1d\xf1hx\x06\xf4\x1d\x9fg[b\xca\xd8s\x82\xbc\
+\xbc\x8c\xe8\x93t\xa2\xaa\x9en\x1a\xbb\xf8\xe1'9\xd5\xe1?\x08\xacDP\xaf\xe0#\
+FI\xa3\xea\x1do\x7f\xfd_\x10\xd6>\xf0+\xa2`Y1N\xf6J\x8a\x97\xbeM\x06\x16\x99\
+ZC\xad{\x08\x1d\xdd\xa1\xb2z\xad,\x1b\x10\xce\x0b\x07\xccn,[y\xa6\xa5eiB\x08\
+\xb9d\x95\x88n\xd2\n\xc5\x0c\xc5\xf4_\x06\x16\xb3I\xc4GQ\xbe\xa3\xb1 \x9e*\
+\xde\xd5\xd5\x1e\xb4\xe5h\xd6\x95ym\n\x0b\x17\xc9\x82\xe7\xd2\x9ep\xe4\xfe\
+\xdcS\xcb!\xfc\xbbv4o\xe9\xb9\xfa\x01\x9f\x1e\x8eF/\xe8\xf5\xf1\x00\x00\x00\
+\x00IEND\xaeB`\x82\xa2+\x02n" )
+
+def getAboutBitmap():
+    return BitmapFromImage(getAboutImage())
+
+def getAboutImage():
+    stream = cStringIO.StringIO(getAboutData())
+    return ImageFromStream(stream)
+
+#----------------------------------------------------------------------
+def getExitData():
+    return zlib.decompress(
+'x\xda\x01/\x05\xd0\xfa\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x16\
+\x00\x00\x00\x16\x08\x06\x00\x00\x00\xc4\xb4l;\x00\x00\x00\x04sBIT\x08\x08\
+\x08\x08|\x08d\x88\x00\x00\x04\xe6IDAT8\x8d\xad\x95\xdf\x8f]U\x15\xc7?k\xef}\
+\xee\xb9\xb7wf\x9a\xc1\xa9:43`M\xa5\xe9\x8c\x1d[(Z\x85\x86\x06\x84P!\x1a\x8d\
+\x84\x08&\xa6&\x9a\x18\x8d6>h\x8c\xff\x04\x89<\xd0\x07\x05\xd2\xd4\xc8\x8f\
+\x86\x84\xa4!\x84\x9f\x16,\xa1h\xa6\x94\xfe\x04j\x7f\xccp\xef\xdc\x99;w\xe6\
+\xde\x99{\xce\xd9g\x9f\xbd}8\xd361<\xf0\xc0Jv\xf6z\xd8\xeb\xbb~}\xd7\xda\xc2\
+u\x19\xe4\xf3\x91\x1e\x80\x84\x100\xd1\xba\r?\xfd\xd9o\x9f\xfc\xe6\xb7\xf6\
+\xdcW\xa9T\xb4\xd2\n\xad4J+\x94(D\tZk\x04Ai\x85\x88\xa0\x95\xa0\x94\x02\x01A\
+\xc8\xedjr\xf8\xf9C\x7f?\xf8\xd4_~\xed\xbdK\x0c\xc0\xbd{\x1f=p\xeb\xce={\xe7\
+\x17\xda\x00(e\x10\xa5\xd7\x00\xca;w\x05Zk\xe28F\t \n\xad\x05\x11\x01\xa0\
+\x1a\x9b\xdaC?\xf9\xdd\xbeF\xa3\xd1\x14\x91?+mj7\x8fn\xbc\xe5{\x8d\xe6<\xfd\
+\xc4\x91\xd9@\x9ay\xd2\xcc_\xd3\xf3"\xb0i|\x80/~\xa1J\x92\x16\xa4\x162\x1bH\
+\xd2@\x9aAf\x85\xdej\xc1\xccl\x93\xcd[v>,\xa2\xbf\xa4D\xe4\x86v\xbb\x1d\xd9\
+\xdc_\x03L\xad\'\xcb\n2\x1bX\xe9;\x86\x06\x07x\xf8\xc7\xf7\xf0\x8d\xa9\xad\
+\xb8B\xb1\x9a\\\x07L3\xae\xebVqef\xbe\x82\xa8A\x03\x84\xd6\xfc\x12c7y\xbc\
+\xf7\x88+\xd3+|A\xe1\xfa(]%we\xba!\x14\xa4\x99\xc7\x17\x16+\n\xa4J\xa5b\x10\
+\x11\xc4\t\x1eEg)\t\x04\x8f\x01X\xed\xe7\xa4\xa9\xc5\x87\xb21\xceY\xb6l\x1ea\
+\xe2\x96\r\x9c8\xdd\xa1\x9fx\x00\xacS\x18cx\xf0\xfe\xaf`\xad\xe3\xcdc\rZ\x1d\
+O\\\x89\x88"\xcdb+\xa39\x9f\x82\xa8\x12\xd89Ofs\x08\xe0\n\x98\xd82\xca\x1f\
+\xf7\xff\x00\x80\xd5t\x9aS\xe7\xe6\x00\xf0\xde\x13\x88P\xd1\x08\xdf\xde1\xc2\
+\xfa\xa1\x98\x7f\xbcx\x85\xa5\x1e\xe8\x1cN\x9c\xfc\x18\x9b\x97\x9cS\xa5\x01\
+\xd8,%\xcd,\x95J\x95\xef\xef\x9d\x02\xe0\xa5\xd7\xces\xe4\x95\xf3x\xaf\xae\
+\xb1\xa51\x97p\xe8\xf9\x0f8\xf6\xde,\x13[7\xf3\xdd\xddc8\xe79\xf1\xc1,\x8bK\
+\x16\xa3\xd5u\xe0\x80&\xcf\x0b\xfa\xfd\x94\xa9\xc91&\xb7n\xe2_\xc7/s\xe8\xb9\
+i\xba\xbd.>\x94\x8f+\x11\xe4N\xb88\xd3\xe7\xf0\x91\x8b\x9c<\xd3\xe0\xce]\x9b\
+I\xf2\xc0B\xbb\xcb\xc0`\x85(\x8e\xae\x02+B\x10\x92\xb4\xc0Z\xcf\xf8\xd8\x08\
+\x00\xd3\'?\xa1\xdd\x9eC$\xe2\xd2L\x8fC\x87O\xf3\xd6\xbbM\x96W\nDi>\xba\xd4\
+\xe7\xc3\xfff\x00L|m\x18\x13+t\x1cc\xccZ\xc4"\x02bH3\x07\xa2\x18^_\x07`\xb6\
+\xd1#\xcf\x03\xce9\xba\xdd%\x0e>\xf3\x1e/\xbd\xf6\x11\xce\x95\xf4\xea\xb4\
+\x1b\x9c<\xdf\x01`|\xe3\x10\xeb\xea\x06\xa5\xabh\xa3\x010\x88\xc2\x07E\x96\
+\x15\xa4\x19\xac\xf4\x1d\x00q\xac\xe9\'\x0emJ\x87\xa8\x88\xe0!]i\xd3\xedY2\
+\x1b\x18\xaa\x97\xd1\xad$\xbe\xa4\\\x14\xa3\xd6jl\xca2\x1b2[\x90f9\x97g\x96\
+\x00\x98\xdc2\xc2\x91\x97!I\x0b|\xc8\xc8lJ\x96\x05\x8a\xa0\x11\xd1\x0c\x0ein\
+\x9d\x1c\x06\xe0\xec\xc7K\x88\xd6\x88\x8e\xd1Z \xf8\xb2\x14\x01!Isl\x0e\xaf\
+\x1f=\x03\xc0\x0f\x1f\xd8\xc6\xddw}\x9df\xab\xcb\xc2b\xca\xca\xaa\xc3yU\xb6%\
+8\x1e\xf9\xd1vv\xef\x1a\xe7\xf8\xf4\x1c\xd3\xe7\x16Q\xa6\x8a\x18\x8d6\xd1\
+\xda\x1e\x89\xea\xa3C#\xb7\xfd\xd2\x15\x01D\xd3j-\xe3|\x95];\xc7\xb8\xfb\xce\
+\xaf\x92Y\xa1\xd3\xe9\xe2}\xa0V3\x8c\x8e~\x99\x9f?:\xc5/\x1e))\xf9\xd8\xd3g\
+\xb9x\xf9\n\xdaT\x91\xa8\x86\xeb]\xe8\xce^x\xfbi#\x08\xa2"\x82/\x10\x04D\xf1\
+\xc4\xdf^%w\x81?\xfc\xe6;\xfc\xfeW\xe5\xf9\xf7\xf4%D\t;\xb6\x8d\x03p\xfa\\\
+\x93\xa7^\x98\xe5\xedc\xa7\xa8\xd4\x87\xc0\x94S\xabT9\xe2F\x94\x96\xc8D\xd8\
+\xb5\x91\xb9\xba\x06\xffz\xf0\x9f\xbc\xf3\x9f\x16\xf7\xec\xde\xc4\xd4\xc4\
+\x06\xee\xb8\xfd&\x00^=:\xcb\x89\xb3\x1d\xde8\xd6\xa4\xb50C\\\xad\x95\x8d\
+\xf3\xa5\x9d6\x91\x02%\xc6\xd9nsx}\xb4\xd0\xeeTF\n\x1f \x04DJ\x07g\xce|\xc8\
+\xd9s\x17\x18\xa8W\x19\x1e\xde\x80\xc7\xd0\xeb.\xd3O\x1cqM\xb3n\xa0R.\'_\x00\
+\x8aj\x1c\xb3\xd2o7\xbd\xb7\x8b\xc6\xe5\xfdO6n\xdas`\xdb\xed\xfb\xfe\xd4[\
+\x9e\'\xb3\x05\xa2"D4\x88A)\x83\x0f\x8a\xce\xd2*J\x1b\xa2J\x9d\x1b\x06bP\x15\
+\xc4D\x88\x8a\x88\xaa\x9aZ\xadF\xe8_\xcaO\x1d\x7f\xf6\xf1\xe0\x8b\x05\t! "C#\
+7n\xdb?\xb9\xfd\x81\x87j\xd5\xa8~\xf5\xf3*\x87GA\x80@\xc9\x1e\x02\xff\'%\x87\
+\x17Z\xcd\xf6\xfb\xc7\x9f9\x90%\xf3O\x86\x102\t!\\\x05\xd1\xc0\x8d@\x9dO1\
+\xff\x0c\xb2\x0c\xcc\x855\xc0\xff\x01c:[\xc2\xdb:\x88\x1b\x00\x00\x00\x00IEN\
+D\xaeB`\x82\x8f\x92z\x04' )
+
+def getExitBitmap():
+    return BitmapFromImage(getExitImage())
+
+def getExitImage():
+    stream = cStringIO.StringIO(getExitData())
+    return ImageFromStream(stream)    
 #----------------------------------------------------------------------
 class MyApp(wx.App):
 
@@ -973,3 +1158,5 @@ class MyApp(wx.App):
 
 app = MyApp(0)
 app.MainLoop()
+
+
