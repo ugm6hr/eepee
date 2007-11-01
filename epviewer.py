@@ -5,7 +5,6 @@ An application for viewing and analyzing ECGs and EP tracings
 
 from __future__ import division
 import wx, Image, os, copy
-from wx.lib.imagebrowser import *
 
 TITLE          = "EP viewer"
 ABOUT          = """ 
@@ -70,7 +69,7 @@ class PlayList():
                 
         for eachfile in allfiles:
             if eachfile.split('.')[-1].lower() in \
-               ['bmp','png','jpg','jpeg','tif','tiff']:
+               ['bmp','png','jpg','jpeg','tif','tiff','gif']:
                    self.playlist.append(os.path.join(dirname,eachfile))
         self.playlist.sort()
         self.nowshowing = self.playlist.index(filename)
@@ -114,7 +113,7 @@ class NotePad(wx.Panel):
         (w,h) = self.GetSize()#because GetSize doesnt work in init
         self.pad.SetSize(( w*0.6 ,h*0.9 )) 
         self.pad.SetPosition(( w*0.2 ,h*0.05 )) #Now I have a nicely centered potrait page
-        self.notefile = '.'.join((imagefilename.split('.')[0],'note')) #FIXME: What if imagename has a '.'
+        self.notefile = '.'.join((imagefilename.rsplit('.',1)[0],'note')) #Splits once at rightmost '.'
         if os.path.exists(self.notefile):
             self.parseNote()
             self.pad.write(self.notes)
@@ -125,15 +124,12 @@ class NotePad(wx.Panel):
             self.parentframe.panel.caliper.calib = 0
             self.pad.Clear()
             
-        print 'notes at init', self.notes
-            
     def SaveNote(self):
         """
         Save the note to the file with 
         same name as image with suffix 'note'
         """
         self.notes = self.pad.GetValue()
-        print "Am saving", self.notes
         
         fi = open(self.notefile,'w')
         
@@ -145,8 +141,6 @@ class NotePad(wx.Panel):
         
         fi.write('[Notes]\n')
         fi.write(self.notes)
-        
-        print 'notes on save', self.notes
         
         fi.close()
         
@@ -161,7 +155,6 @@ class NotePad(wx.Panel):
     	entries or in between the text in the notes.
     	"""
     	lines_to_parse = open(self.notefile,'r').readlines()
-    	print lines_to_parse
     	linecount = 0
     	
     	try:
@@ -184,10 +177,8 @@ class NotePad(wx.Panel):
         #if there any errors in parsing (also covers the notes made with prev versions),
         #load the entire contents and allow user to edit
         except: 
-            print "failed to parse"
             self.notes = ''.join(lines_to_parse[:])
             self.frame = [0,0,0,0]
-            print self.notes 
             
         if self.parentframe.panel.caliper.calib == 0:
             self.parentframe.panel.caliper.units = 'pixels'
@@ -212,8 +203,6 @@ class Caliper():
         self.prev_x = 0
         self.prev_y = 0
         self.calib = 0
-        
-        #self.parentframe = wx.GetTopLevelParent(self)
         
         #initialize pen
         self.pen =wx.Pen(wx.Colour(255, 255, 255), 1, wx.SOLID)
@@ -767,9 +756,13 @@ class MyFrame(wx.Frame):
         self.list.SetSelection(self.playlist.nowshowing)
     
     def ChooseImage(self,event):
-        dlg = ImageDialog(self,self.rootdir) #FIXME: May change to directory/file chooser / restrict formats
+        #dlg = ImageDialog(self,self.rootdir) #FIXME: May change to directory/file chooser / restrict formats
+        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF\
+                                     *.jpg;*.JPG;*.jpeg;*.JPEG;\
+                                     *.bmp;*.BMP;*.gif;*.GIF'
+        dlg = wx.FileDialog(self,self.rootdir,style=wx.OPEN,wildcard=filters)
         if dlg.ShowModal() == wx.ID_OK:
-            img = dlg.GetFile()
+            img = dlg.GetPath()
             
             if self.width == 0:#want to do only first time
                 self.width = self.panel.GetSize()[0] #need it only to resize image
