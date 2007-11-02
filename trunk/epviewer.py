@@ -157,16 +157,16 @@ class NotePad(wx.Panel):
     	lines_to_parse = open(self.notefile,'r').readlines()
     	linecount = 0
     	
-    	
-    	self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
-    	self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
-    	self.notes = ''.join(lines_to_parse[2:])
+    	try:
+    	    self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
+    	    self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
+    	    self.notes = ''.join(lines_to_parse[2:])
     	
     	#If cannot parse, dump the whole thing on the pad
-    	#except:
-    	#    self.notes = ''.join(lines_to_parse[:])
-    	#    self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
-    	#    self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
+    	except:
+    	    self.notes = ''.join(lines_to_parse[:])
+    	    self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
+    	    self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
     	
         if self.parentframe.panel.caliper.calib == 0:
             self.parentframe.panel.caliper.units = 'pixels'  #FIXME: base this on value itself
