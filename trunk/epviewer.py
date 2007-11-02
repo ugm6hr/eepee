@@ -120,7 +120,7 @@ class NotePad(wx.Panel):
            
         else:   #else start empty
             self.notes = ''
-            self.frame = [0,0,0,0]
+            self.zoomframe = [0,0,0,0]
             self.parentframe.panel.caliper.calib = 0
             self.pad.Clear()
             
@@ -129,17 +129,17 @@ class NotePad(wx.Panel):
         Save the note to the file with 
         same name as image with suffix 'note'
         """
+
         self.notes = self.pad.GetValue()
         
         fi = open(self.notefile,'w')
         
-        fi.write('[Calibration]\n') #FIXME: Have to make sure this works in windows
-        fi.write(str(self.parentframe.panel.caliper.calib)+'\n')
+        fi.write('Calibration:%s\n' % (self.parentframe.panel.caliper.calib)) 
+                
+        fi.write('Zoomframe:%s,%s,%s,%s\n' % (self.zoomframe[0],self.zoomframe[1],
+                                              self.zoomframe[2],self.zoomframe[3]))
+        #fi.write('%s,%s,%s,%s\n' % (self.frame[0],self.frame[1],self.frame[2],self.frame[3]))
         
-        fi.write('[Frame]\n')
-        fi.write('%s,%s,%s,%s\n' % (self.frame[0],self.frame[1],self.frame[2],self.frame[3]))
-        
-        fi.write('[Notes]\n')
         fi.write(self.notes)
         
         fi.close()
@@ -149,39 +149,27 @@ class NotePad(wx.Panel):
     	Parse the stored note and extract the information
     	Notes can be a multi-line entry and will be stored at 
     	the end of the file.
-    	Single line entries come before. All have a header of the form
-    	'[title]' and the data itself should come on the next line.
-    	There can, however be empty lines at the beginning, between the different
-    	entries or in between the text in the notes.
+    	Single line entries come before. 
+    	All have a header of the 'somestring:' followed by the data itself.
+    	Empty lines are not allowed except at the end.    	
     	"""
+    	
     	lines_to_parse = open(self.notefile,'r').readlines()
     	linecount = 0
     	
-    	try:
-    	    while '[Calibration]' not in lines_to_parse[linecount]:
-                linecount += 1
-            linecount += 1
-            self.parentframe.panel.caliper.calib = float(lines_to_parse[linecount]) #calib is a single value
-            #self.parentframe.panel.caliper.units = 'ms'
-            
-            while '[Frame]' not in lines_to_parse[linecount]:
-                linecount += 1
-            linecount += 1
-            self.frame = lines_to_parse[linecount].split(',')
-            self.frame = [int(x) for x in self.frame] # A list of four numbers - x,y for upper left and lower right
-    
-            while '[Notes]' not in lines_to_parse[linecount]:
-                linecount += 1
-            self.notes = ''.join(lines_to_parse[linecount+1:])
-        
-        #if there any errors in parsing (also covers the notes made with prev versions),
-        #load the entire contents and allow user to edit
-        except: 
-            self.notes = ''.join(lines_to_parse[:])
-            self.frame = [0,0,0,0]
-            
+    	
+    	self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
+    	self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
+    	self.notes = ''.join(lines_to_parse[2:])
+    	
+    	#If cannot parse, dump the whole thing on the pad
+    	#except:
+    	#    self.notes = ''.join(lines_to_parse[:])
+    	#    self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
+    	#    self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
+    	
         if self.parentframe.panel.caliper.calib == 0:
-            self.parentframe.panel.caliper.units = 'pixels'
+            self.parentframe.panel.caliper.units = 'pixels'  #FIXME: base this on value itself
         else:
             self.parentframe.panel.caliper.units = 'ms'
     	
