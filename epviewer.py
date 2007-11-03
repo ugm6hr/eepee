@@ -12,8 +12,10 @@ An application to view and analyze EP tracings\n
 Author: Raja S. \n 
 rajajs@gmail.com\n 
 For more information and for updates visit\n  
-http:\\code.google.com\p\eepee"""
-
+http:\\code.google.com\p\eepee\n
+-------------------------------------------------\n
+Have you switched to opensource yet?\n
+-------------------------------------------------"""
 #------------------------------------------------------------------------
 #wx IDs
 
@@ -131,48 +133,44 @@ class NotePad(wx.Panel):
         """
 
         self.notes = self.pad.GetValue()
-        
         fi = open(self.notefile,'w')
         
         fi.write('Calibration:%s\n' % (self.parentframe.panel.caliper.calib)) 
-                
         fi.write('Zoomframe:%s,%s,%s,%s\n' % (self.zoomframe[0],self.zoomframe[1],
                                               self.zoomframe[2],self.zoomframe[3]))
-        #fi.write('%s,%s,%s,%s\n' % (self.frame[0],self.frame[1],self.frame[2],self.frame[3]))
-        
         fi.write(self.notes)
         
         fi.close()
         
     def parseNote(self): 
-    	"""
-    	Parse the stored note and extract the information
-    	Notes can be a multi-line entry and will be stored at 
-    	the end of the file.
-    	Single line entries come before. 
-    	All have a header of the 'somestring:' followed by the data itself.
-    	Empty lines are not allowed except at the end.    	
-    	"""
-    	
-    	lines_to_parse = open(self.notefile,'r').readlines()
-    	linecount = 0
-    	
-    	try:
-    	    self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
-    	    self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
-    	    self.notes = ''.join(lines_to_parse[2:])
-    	
-    	#If cannot parse, dump the whole thing on the pad
-    	except:
-    	    self.notes = ''.join(lines_to_parse[:])
-    	    self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
-    	    self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
-    	
+        """
+        Parse the stored note and extract the information
+        Notes can be a multi-line entry and will be stored at 
+        the end of the file.
+        Single line entries come before. 
+        All have a header of the 'somestring:' followed by the data itself.
+        Empty lines are not allowed except at the end.        
+        """
+        
+        lines_to_parse = open(self.notefile,'r').readlines()
+        linecount = 0
+        
+        try:
+            self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
+            self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
+            self.notes = ''.join(lines_to_parse[2:])
+        
+        #If cannot parse, dump the whole thing on the pad
+        except:
+            self.notes = ''.join(lines_to_parse[:])
+            self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
+            self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
+        
         if self.parentframe.panel.caliper.calib == 0:
             self.parentframe.panel.caliper.units = 'pixels'  #FIXME: base this on value itself
         else:
             self.parentframe.panel.caliper.units = 'ms'
-    	
+        
 #--------------------------------------------------------------------------------        
 
 
@@ -180,10 +178,12 @@ class NotePad(wx.Panel):
 class Caliper():
 
     def __init__(self,parent):
+
         #initialize flags
         self.CALIBRATE = "False"
         self.STATUS = "None"
         self.CALIPERMOVE = "None"
+
         #initialize positions
         self.left_x = 0
         self.right_x = 0
@@ -377,6 +377,7 @@ class Caliper():
         self.horiz_y = 0
         self.prev_x = 0
         self.prev_y = 0
+        self.measurement = ""
         
     def Stamp(self,dc):
         #first XOR over the calipers
@@ -402,6 +403,7 @@ class Caliper():
         self.horiz_y = 0
         self.prev_x = 0
         self.prev_y = 0
+        self.measurement = ""
                 
     def MeasureDistance(self,pos):
         #print self.left_x, self.right_x
@@ -484,7 +486,7 @@ class CustomWindow(wx.Window):
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.MoveSecond(dc,pos)
-            self.frame.SetStatusText(self.caliper.measurement)
+            self.frame.SetStatusText(self.caliper.measurement,3)
                     
         if self.caliper.STATUS == "Done":
             #get position
@@ -514,14 +516,14 @@ class CustomWindow(wx.Window):
             pos = event.GetPosition()
             self.caliper.RePosFirst(dc,pos)
         
-            self.frame.SetStatusText(self.caliper.measurement)
+            self.frame.SetStatusText(self.caliper.measurement,3)
                 
         if self.caliper.STATUS == "MoveSecond":
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.RePosSecond(dc,pos)
-        
-            self.frame.SetStatusText(self.caliper.measurement)
+            
+            self.frame.SetStatusText(self.caliper.measurement,3)
             
     def CaliperRemove(self,event):
         dc = wx.ClientDC(self)
@@ -548,9 +550,15 @@ class MyFrame(wx.Frame):
 
         wx.Frame.__init__(self, parent, -1, title,pos=(0,0),style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
-        self.sb = wx.StatusBar(self)  
-        self.SetStatusBar(self.sb)
-
+        
+        ##-------------STATUSBAR----------------------------------------------------##
+        #statusbar with 4 fields, first for toolbar status messages,
+        #second for filename
+        #third for calibration status
+        #fourth for the measurements
+        
+        self.CreateStatusBar(4)
+        
         ##--------------TOOLBAR------------------------------------------------------##
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((20,20))
@@ -566,7 +574,7 @@ class MyFrame(wx.Frame):
         self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           ,  getNextBitmap())
         self.toolbar.AddLabelTool(ID_SAVE    , 'Save'           ,  getSaveBitmap())
         self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           ,  getExitBitmap())
-        self.toolbar.AddLabelTool(ID_ABOUT  , 'About'          ,  getAboutBitmap())
+        self.toolbar.AddLabelTool(ID_ABOUT   , 'About'          ,  getAboutBitmap())
         self.toolbar.Realize()
         ##----------------------------------------------------------------------------##
 
@@ -608,7 +616,6 @@ class MyFrame(wx.Frame):
                 
         self.Bind(wx.EVT_LISTBOX_DCLICK, self.JumpInList)
         
-        self.wildcard = "PNG files (*.png)|*.png|All files (*.*)|*.*"
         self.RESIZE_FLAG = "TRUE"
         self.rootdir = os.getcwd()
         self.playlist = []
@@ -630,8 +637,12 @@ class MyFrame(wx.Frame):
         self.panel.caliper.CALIBRATE = "False"
         self.panel.caliper.STATUS = "None"
         self.panel.caliper.CALIPERMOVE = "None"
+        self.panel.caliper.measurement = ''
         
-        
+        self.SetStatusText("No file selected",1)
+        self.SetStatusText("",2)
+        self.SetStatusText("",3)
+                
         #disable these icons initially
         self.toolbar.EnableTool(ID_CALIPER , False)
         self.toolbar.EnableTool(ID_CALIB   , False)
@@ -639,7 +650,7 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_STAMP   , False)
         self.toolbar.EnableTool(ID_PREV    , False)
         self.toolbar.EnableTool(ID_NEXT    , False)
-
+        
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
@@ -655,7 +666,9 @@ class MyFrame(wx.Frame):
        
         self.InitializeAll()
         self.list.SetSelection(self.playlist.nowshowing)
-        self.DisplayImage(self.playlist.playlist[self.playlist.nowshowing])
+
+        self.img = self.playlist.playlist[self.playlist.nowshowing]
+        self.DisplayImage()
         
     def NextOnList(self,event):
         self.playlist.nowshowing += 1
@@ -665,11 +678,13 @@ class MyFrame(wx.Frame):
         self.InitializeAll()
 
         self.list.SetSelection(self.playlist.nowshowing)
-        self.DisplayImage(self.playlist.playlist[self.playlist.nowshowing])
+        self.img = self.playlist.playlist[self.playlist.nowshowing]
+        self.DisplayImage()
   
     def JumpInList(self,event): #double clicked on playlist to 'jump'
       self.playlist.nowshowing = self.list.GetSelection()
-      self.DisplayImage(self.playlist.playlist[self.playlist.nowshowing])
+      self.img = self.playlist.playlist[self.playlist.nowshowing]
+      self.DisplayImage()
           
     def OnClose(self,event):
         #first save notes - but dont get caught with errors
@@ -701,10 +716,10 @@ class MyFrame(wx.Frame):
         im = im.resize((int(width_im*ratio),int(height_im*ratio)),Image.ANTIALIAS)
         self.imagewidth,self.imageheight = im.size  # the size as displayed
         return im
-                
-    def DisplayImage(self,img):
+    
+    def DisplayImage(self):
        
-        self.panel.bmp = self.GetBmpfromPIL(img)
+        self.panel.bmp = self.GetBmpfromPIL(self.img)
         if self.panel.bmp == None:
            return 0
         
@@ -715,8 +730,7 @@ class MyFrame(wx.Frame):
         else:
             self.IMAGE_SELECTED = "TRUE"
         
-        self.rootdir = os.path.dirname(img)
-        self.SetStatusText(os.path.basename(img))
+        self.rootdir = os.path.dirname(self.img)
 
         dc = wx.ClientDC(self.panel)
         dc.Clear()  #clear old image if still there
@@ -725,7 +739,16 @@ class MyFrame(wx.Frame):
 
         dc.Blit(0,0,self.width-self.sidepanelsize, self.panel.caliper.height,memdc,0,0)
         
-        self.notepad.FillNote(img)  #get notes
+        self.notepad.FillNote(self.img)  #get notes
+        
+        self.SetStatusText(os.path.basename(self.img),1)
+        
+        calibrated = ( self.panel.caliper.calib <> 0 ) # Will be 0 if not calibrated
+        if calibrated:
+            calibstatus = 'Calibrated'
+        else:
+            calibstatus = 'Not calibrated'
+        self.SetStatusText(calibstatus,2)
         
         #enable icons
         self.toolbar.EnableTool(ID_CALIPER, True)
@@ -744,22 +767,22 @@ class MyFrame(wx.Frame):
         self.list.SetSelection(self.playlist.nowshowing)
     
     def ChooseImage(self,event):
-        #dlg = ImageDialog(self,self.rootdir) #FIXME: May change to directory/file chooser / restrict formats
+
         filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF\
                                      *.jpg;*.JPG;*.jpeg;*.JPEG;\
                                      *.bmp;*.BMP;*.gif;*.GIF'
         dlg = wx.FileDialog(self,self.rootdir,style=wx.OPEN,wildcard=filters)
+
         if dlg.ShowModal() == wx.ID_OK:
-            img = dlg.GetPath()
+            self.img = dlg.GetPath()
             
             if self.width == 0:#want to do only first time
                 self.width = self.panel.GetSize()[0] #need it only to resize image
                 self.panel.caliper.height = self.panel.GetSize()[1]
-            self.playlist = PlayList(img)
+            self.playlist = PlayList(self.img)
             
             self.DisplayPlayList()
-                            
-            self.DisplayImage(img)
+            self.DisplayImage()
 
     def SaveImage(self, event):
         """
@@ -789,10 +812,6 @@ class MyFrame(wx.Frame):
             savefilename += '.png'
 
         savebmp.SaveFile(savefilename,wx.BITMAP_TYPE_PNG)
-
-#    def WriteImage(self):
-        
-        #save it to file
 
     def GetBmpfromPIL( self,img ):
         self.imsmall = Image.open( img, 'r')
@@ -1139,5 +1158,3 @@ class MyApp(wx.App):
 
 app = MyApp(0)
 app.MainLoop()
-
-
