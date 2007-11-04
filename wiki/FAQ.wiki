@@ -1,0 +1,4 @@
+#summary Frequently Asked Questions
+
+*What image formats can be used?*
+Bitmap (`*.bmp`), tiff (`*.tif, *.tiff`), jpeg (`*.jpg, *.jpeg`) and gif (`*.gif`) 
