@@ -1,4 +1,21 @@
 #summary Frequently Asked Questions
 
 *What image formats can be used?*
+
 Bitmap (`*.bmp`), tiff (`*.tif, *.tiff`), jpeg (`*.jpg, *.jpeg`) and gif (`*.gif`) 
+
+*In what format can I save the image?*
+
+Currently, the saved images will be in the png format. If you dont specify an extension in the filename to save, '.png' will be added automatically. It is not difficult to allow a choice of formats in which to save, just that it is not a priority.
+
+*Where are the notes and the calibration information stored?*
+
+The information for any 'image.xyz' is stored in a file called 'image.note' in the same directory. This is a plain text file and you can view it with a text editor. Do not modify it with a text editor because reading the calibration and other information is dependent on the file being in the correct format. Also, if you are changing the location of the image file or passing it on to someone, you have to copy the note file to the new location too to transfer the notes and calibration.
+
+*Can I use the calipers without calibrating?*
+
+Yes, you can. In that case, the measurement will only be in pixels. This may be adequate if you are not concerned about the absolute measurement and only are comparing two distances. 
+
+*What is the origin of the name eepee?*
+
+Of course it sounds like EP (for ElectroPhysiology) which is the field whose practitioners this is targeted towards. If you insist on an expansion, it stands for Eepee is for Electrophysiologists to Present Electrocardiograms and Electrograms'. Recursive in the classic Unix tradition and awkward and made-up in classic medical tradition.
