@@ -18,4 +18,4 @@ Yes, you can. In that case, the measurement will only be in pixels. This may be 
 
 *What is the origin of the name eepee?*
 
-Of course it sounds like EP (for ElectroPhysiology) which is the field whose practitioners this is targeted towards. If you insist on an expansion, it stands for Eepee is for Electrophysiologists to Present Electrocardiograms and Electrograms'. Recursive in the classic Unix tradition and awkward and made-up in classic medical tradition.
+Of course it sounds like EP (for Electrophysiology) which is the field whose practitioners this is targeted towards. If you insist on an expansion, it stands for Eepee is for Electrophysiologists to Present Electrocardiograms and Electrograms'. Recursive in the classic Unix tradition and awkward and made-up in classic medical tradition.
