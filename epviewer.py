@@ -48,7 +48,7 @@ class PlayList():
             
     def MakeCustomPlayList():
         """
-        Allow user to make a playlist and save it
+              Allow user to make a playlist and save it
         """
         #FIXME: To implement fully
         dlg = wx.FileDialog(self,"Select Images",style = wx.OPEN | wx.MULTIPLE)
@@ -78,7 +78,7 @@ class PlayList():
         
     def SavePlayList(self,event):
         """
-        Save a playlist that as been created
+           Save a playlist that as been created
         """
         playlistfile = wx.FileDialog(self,"Save file as",style = wx.SAVE)
         #FIXME: check for cancel, etc.
@@ -90,7 +90,7 @@ class PlayList():
         
     def OpenPlayList(self,event):
         """
-        open an existing playlist
+              open an existing playlist
         """
         self.playlist = playlistfile.read().split('\n')
         #FIXME: May have to remove spaces
@@ -129,7 +129,7 @@ class NotePad(wx.Panel):
     def SaveNote(self):
         """
         Save the note to the file with 
-        same name as image with suffix 'note'
+              same name as image with suffix 'note'
         """
 
         self.notes = self.pad.GetValue()
@@ -240,6 +240,8 @@ class Caliper():
             cal = dialog.GetValue()
             self.calib = int(cal)/self.distance  #multiply pixels by scale to get ms
             self.units = "ms"
+            
+            
         dialog.Destroy() 
         
     def ClickMove(self,pos):
@@ -454,6 +456,7 @@ class CustomWindow(wx.Window):
             self.caliper.ClickCalibrate(dc)
             self.caliper.STATUS = "None"
             self.caliper.CALIBRATE = "False"
+            self.frame.SetStatusText('Calibrated',2)
             
         #ready to move
         elif self.caliper.STATUS == "Done":  #caliper is drawn
@@ -563,18 +566,38 @@ class MyFrame(wx.Frame):
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((20,20))
 
-        self.toolbar.AddLabelTool(ID_SELECT  , 'Open'           ,  getOpenBitmap())
+        self.toolbar.AddLabelTool(ID_SELECT  , 'Open'
+                                             , getOpenBitmap()
+                                             , longHelp='Open a file')
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_CALIB   , 'Calibrate'      ,  getCalibrateBitmap())
-        self.toolbar.AddLabelTool(ID_CALIPER , 'Caliper'        ,  getCalipersBitmap())
-        self.toolbar.AddLabelTool(ID_REMOVE  , 'Remove Caliper' ,  getRemoveCalipersBitmap())
-        self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'  ,  getStampCalipersBitmap())
+        self.toolbar.AddLabelTool(ID_CALIB   , 'Calibrate'
+                                             , getCalibrateBitmap()
+                                             , longHelp='Calibrate with known measurement')
+        self.toolbar.AddLabelTool(ID_CALIPER , 'Caliper'
+                                             ,  getCalipersBitmap()
+                                             , longHelp='Start a new caliper')
+        self.toolbar.AddLabelTool(ID_REMOVE  , 'Remove Caliper'
+                                             ,  getRemoveCalipersBitmap()
+                                             , longHelp='Remove the current caliper' )
+        self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'
+                                             ,  getStampCalipersBitmap()
+                                             , longHelp='Print the caliper on image')
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_PREV    , 'Previous'       ,  getPreviousBitmap())
-        self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           ,  getNextBitmap())
-        self.toolbar.AddLabelTool(ID_SAVE    , 'Save'           ,  getSaveBitmap())
-        self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           ,  getExitBitmap())
-        self.toolbar.AddLabelTool(ID_ABOUT   , 'About'          ,  getAboutBitmap())
+        self.toolbar.AddLabelTool(ID_PREV    , 'Previous'
+                                             ,  getPreviousBitmap()
+                                             , longHelp='Open previous image in playlist')
+        self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           
+                                             ,  getNextBitmap()
+                                             , longHelp='Open next image in playlist')
+        self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
+                                             ,  getSaveBitmap()
+                                             , longHelp='Save the image with stamped calipers')
+        self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           
+                                             ,  getExitBitmap()
+                                             , longHelp='Exit the application')
+        self.toolbar.AddLabelTool(ID_ABOUT   , 'About'          
+                                             ,  getAboutBitmap()
+                                             , longHelp='About Eepee')
         self.toolbar.Realize()
         ##----------------------------------------------------------------------------##
 
@@ -629,8 +652,8 @@ class MyFrame(wx.Frame):
         
     def InitializeAll(self):
         """
-        Values that have to be initialized
-        for every new image
+              Values that have to be initialized
+              for every new image
         """
         
         self.panel.CALIPERFLAG = "False"
@@ -650,6 +673,7 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_STAMP   , False)
         self.toolbar.EnableTool(ID_PREV    , False)
         self.toolbar.EnableTool(ID_NEXT    , False)
+        self.toolbar.EnableTool(ID_SAVE    , False)
         
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
@@ -755,6 +779,7 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_CALIB, True)
         self.toolbar.EnableTool(ID_PREV, True)
         self.toolbar.EnableTool(ID_NEXT, True)
+        self.toolbar.EnableTool(ID_SAVE, True)
         
     def DisplayPlayList(self):
         self.splitter.SplitVertically(self.notebookpanel,self.list)
@@ -803,7 +828,7 @@ class MyFrame(wx.Frame):
 
         dlg = wx.FileDialog(self, "Save image as...", os.getcwd(),
                             style=wx.SAVE | wx.OVERWRITE_PROMPT,
-                            wildcard = self.wildcard)
+                            wildcard = 'png files|*.png')
         if dlg.ShowModal() == wx.ID_OK:
             savefilename = dlg.GetPath()
         dlg.Destroy()
