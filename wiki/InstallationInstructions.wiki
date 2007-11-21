@@ -5,7 +5,7 @@
 Compiled binary (.exe) is available for windows.
 Archived source files (.tar.gz) is available for all platforms.
 
-= Binary file =
+= Binary file (Windows) =
 
 ~~An installer is not currently available.~~
 Just download the exe file from the downloads page and click on it to ~~run.~~ install.
