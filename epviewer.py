@@ -6,6 +6,7 @@ An application for viewing and analyzing ECGs and EP tracings
 from __future__ import division
 import wx, Image, os, copy
 from customrubberband import RubberBand
+from geticons import getBitmap
 
 TITLE          = "EP viewer"
 ABOUT          = """ 
@@ -590,42 +591,42 @@ class MyFrame(wx.Frame):
         self.toolbar.SetToolBitmapSize((20,20))
 
         self.toolbar.AddLabelTool(ID_SELECT  , 'Open'
-                                             , getOpenBitmap()
+                                             , getBitmap("open")
                                              , longHelp='Open a file')
         self.toolbar.AddSeparator()
         self.toolbar.AddLabelTool(ID_CALIB   , 'Calibrate'
-                                             , getCalibrateBitmap()
+                                             , getBitmap("calibrate")
                                              , longHelp='Calibrate with known measurement')
         self.toolbar.AddLabelTool(ID_CALIPER , 'Caliper'
-                                             ,  getCalipersBitmap()
+                                             ,  getBitmap("calipers")
                                              , longHelp='Start a new caliper')
         self.toolbar.AddLabelTool(ID_REMOVE  , 'Remove Caliper'
-                                             ,  getRemoveCalipersBitmap()
+                                             ,  getBitmap("removecalipers")
                                              , longHelp='Remove the current caliper' )
         self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'
-                                             ,  getStampCalipersBitmap()
+                                             ,  getBitmap("stampcalipers")
                                              , longHelp='Print the caliper on image')
         self.toolbar.AddSeparator()
         self.toolbar.AddLabelTool(ID_PREV    , 'Previous'
-                                             ,  getPreviousBitmap()
+                                             ,  getBitmap("previous")
                                              , longHelp='Open previous image in playlist')
         self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           
-                                             ,  getNextBitmap()
+                                             ,  getBitmap("next")
                                              , longHelp='Open next image in playlist')
         
         self.toolbar.AddSeparator()
         self.toolbar.AddCheckLabelTool(ID_FRAME   , 'Select frame'          
-                                             ,  getAboutBitmap()
+                                             ,  getBitmap("about")
                                              , longHelp='Select frame for zoom')
         self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
-                                             ,  getSaveBitmap()
+                                             ,  getBitmap("save")
                                              , longHelp='Save the image with stamped calipers')
         self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           
-                                             ,  getExitBitmap()
+                                             ,  getBitmap("exit")
                                              , longHelp='Exit the application')
         self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_ABOUT   , 'About'          
-                                             ,  getAboutBitmap()
+                                             ,  getBitmap("about")
                                              , longHelp='About Eepee')
         
         
