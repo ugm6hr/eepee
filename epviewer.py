@@ -5,6 +5,7 @@ An application for viewing and analyzing ECGs and EP tracings
 
 from __future__ import division
 import wx, Image, os, copy
+from customrubberband import RubberBand
 
 TITLE          = "EP viewer"
 ABOUT          = """ 
@@ -12,10 +13,8 @@ An application to view and analyze EP tracings\n
 Author: Raja S. \n 
 rajajs@gmail.com\n 
 For more information and for updates visit\n  
-http:\\code.google.com\p\eepee\n
--------------------------------------------------\n
-Have you switched to opensource yet?\n
--------------------------------------------------"""
+http:\\code.google.com\p\eepee\n"""
+
 #------------------------------------------------------------------------
 #wx IDs
 
@@ -31,6 +30,8 @@ ID_PREV     =   wx.NewId()
 ID_NEXT     =   wx.NewId()
 ID_JUMP     =   wx.NewId()
 ID_SAVE     =   wx.NewId()
+ID_FRAME    =   wx.NewId()
+
 #--------------------------------------------------------------------------
 
 
@@ -104,7 +105,7 @@ class NotePad(wx.Panel):
         wx.Panel.__init__(self, parent)
         self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
         self.pad.Clear()
-        self.parentframe = wx.GetTopLevelParent(self) #top level parent to set statustext
+        self.parentframe = wx.GetTopLevelParent(self) #top level parent to set text
         
     def FillNote(self,imagefilename):
         """
@@ -122,7 +123,7 @@ class NotePad(wx.Panel):
            
         else:   #else start empty
             self.notes = ''
-            self.zoomframe = [0,0,0,0]
+            self.parentframe.frameextent = (0,0,0,0)
             self.parentframe.panel.caliper.calib = 0
             self.pad.Clear()
             
@@ -136,8 +137,11 @@ class NotePad(wx.Panel):
         fi = open(self.notefile,'w')
         
         fi.write('Calibration:%s\n' % (self.parentframe.panel.caliper.calib)) 
-        fi.write('Zoomframe:%s,%s,%s,%s\n' % (self.zoomframe[0],self.zoomframe[1],
-                                              self.zoomframe[2],self.zoomframe[3]))
+        fi.write('Zoomframe:%s,%s,%s,%s\n' % (self.parentframe.frameextent[0],
+                                              self.parentframe.frameextent[1],
+                                              self.parentframe.frameextent[2],
+                                              self.parentframe.frameextent[3]))
+                                              
         fi.write(self.notes)
         
         fi.close()
@@ -157,13 +161,14 @@ class NotePad(wx.Panel):
         
         try:
             self.parentframe.panel.caliper.calib = float(lines_to_parse[0].lstrip('Calibration:'))
-            self.zoomframe = [int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')]
+            self.parentframe.frameextent = tuple([int(x) for x in lines_to_parse[1].lstrip('Zoomframe:').split(',')])
             self.notes = ''.join(lines_to_parse[2:])
-        
+            
+            print self.parentframe.frameextent
         #If cannot parse, dump the whole thing on the pad
         except:
             self.notes = ''.join(lines_to_parse[:])
-            self.zoomframe = [0,0,0,0]               #FIXME: should be in initalize
+            self.parentframe.frameextent = (0,0,0,0) #FIXME: should be in initalize
             self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
         
         if self.parentframe.panel.caliper.calib == 0:
@@ -431,16 +436,29 @@ class CustomWindow(wx.Window):
         #Bind mouse events
         self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_LEFT_DOWN,self.OnClick)
+        self.Bind(wx.EVT_LEFT_UP,self.OnRelease)
                
         wx.EVT_PAINT(self, self.OnPaint)
         
         self.units = "pixels" #default when we start
         self.caliper = Caliper(self)
+        
+        self.rubberband = RubberBand(self)
 
+    def OnRelease(self,event):
+        if self.rubberband.enabled:
+            self.rubberband.handleMouseEvents(event)   
+        else:
+            pass
+        
     def OnClick(self,event):
         
+        #rubberband if enabled
+        if self.rubberband.enabled:
+            self.rubberband.handleMouseEvents(event)   
+        
         #Calipers are on and this is the first caliper
-        if self.caliper.STATUS == "First":
+        elif self.caliper.STATUS == "First":
             dc = wx.ClientDC(self)
             self.caliper.ClickLeft(dc)
                   
@@ -477,21 +495,26 @@ class CustomWindow(wx.Window):
             self.caliper.ClickStopSecond()
         
     def OnMotion(self, event):
+        
+        #rubberband if enabled
+        if self.rubberband.enabled:
+            self.rubberband.handleMouseEvents(event)   
+            
         #first caliper        
-        if self.caliper.STATUS == "First":
+        elif self.caliper.STATUS == "First":
             #erase prev line
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.MoveFirst(dc,pos)
         
         #second caliper
-        if self.caliper.STATUS == "Second":
+        elif self.caliper.STATUS == "Second":
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.MoveSecond(dc,pos)
             self.frame.SetStatusText(self.caliper.measurement,3)
                     
-        if self.caliper.STATUS == "Done":
+        elif self.caliper.STATUS == "Done":
             #get position
             pos = event.GetPosition()
             self.caliper.ChangeIcon(pos)
@@ -508,20 +531,20 @@ class CustomWindow(wx.Window):
             elif self.caliper.CALIPERMOVE == "None":
                 self.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))    
                         
-        if self.caliper.STATUS == "MoveWhole": #move both cursors and horiz
+        elif self.caliper.STATUS == "MoveWhole": #move both cursors and horiz
             #we are near horiz bar
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.RePosWhole(dc,pos)
                     
-        if self.caliper.STATUS == "MoveFirst":
+        elif self.caliper.STATUS == "MoveFirst":
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.RePosFirst(dc,pos)
         
             self.frame.SetStatusText(self.caliper.measurement,3)
                 
-        if self.caliper.STATUS == "MoveSecond":
+        elif self.caliper.STATUS == "MoveSecond":
             dc = wx.ClientDC(self)
             pos = event.GetPosition()
             self.caliper.RePosSecond(dc,pos)
@@ -589,16 +612,27 @@ class MyFrame(wx.Frame):
         self.toolbar.AddLabelTool(ID_NEXT    , 'Next'           
                                              ,  getNextBitmap()
                                              , longHelp='Open next image in playlist')
+        
+        self.toolbar.AddSeparator()
+        self.toolbar.AddCheckLabelTool(ID_FRAME   , 'Select frame'          
+                                             ,  getAboutBitmap()
+                                             , longHelp='Select frame for zoom')
         self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
                                              ,  getSaveBitmap()
                                              , longHelp='Save the image with stamped calipers')
         self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'           
                                              ,  getExitBitmap()
                                              , longHelp='Exit the application')
+        self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_ABOUT   , 'About'          
                                              ,  getAboutBitmap()
                                              , longHelp='About Eepee')
+        
+        
         self.toolbar.Realize()
+        
+        #print dir(self.frametoggle)
+        
         ##----------------------------------------------------------------------------##
 
         ##-----------SPLITTER----------------------------------------------------------##                
@@ -622,6 +656,7 @@ class MyFrame(wx.Frame):
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
         self.notebookpanel.SetSizer(sizer)
+        
         ##----------------------------------------------------------------------------##        
         
         wx.EVT_MENU(self,  ID_ABOUT,   self.About)
@@ -635,6 +670,7 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_PREV,    self.PrevOnList)
         wx.EVT_MENU(self,  ID_NEXT,    self.NextOnList)
         wx.EVT_MENU(self,  ID_SAVE,    self.SaveImage)
+        wx.EVT_MENU(self,  ID_FRAME,   self.SelectFrame)
         wx.EVT_CLOSE(self, self.OnClose)
                 
         self.Bind(wx.EVT_LISTBOX_DCLICK, self.JumpInList)
@@ -647,9 +683,58 @@ class MyFrame(wx.Frame):
         self.sidepanelsize = 60 #side of the panel showing playlist
         self.IMAGE_SELECTED = "False"  #Has an image been selected yet?
         self.width = 0 #not initialized
+        self.ZOOMFRAMEON = False
+        
         
         self.InitializeAll()
+    
+    
+    def SelectFrame(self,event):
+        """
+        Select the zoomframe using rubberband if not prev selected.
+        If zoomframe is already on, unzoom now
+        """
         
+        #starting the rubberband
+        if not self.ZOOMFRAMEON:
+            
+            if not self.panel.rubberband.enabled:
+                self.panel.rubberband.enabled = True
+                self.toolbar.EnableTool(ID_CALIPER , False)
+                self.toolbar.EnableTool(ID_CALIB   , False)
+                self.toolbar.EnableTool(ID_REMOVE  , False)
+                self.toolbar.EnableTool(ID_STAMP   , False)
+                self.toolbar.EnableTool(ID_PREV    , False)
+                self.toolbar.EnableTool(ID_NEXT    , False)
+                self.toolbar.EnableTool(ID_SAVE    , False)
+        
+            else:
+                if self.panel.rubberband.getCurrentExtent() <> None:
+                    frameborders = self.panel.rubberband.getCurrentExtent()
+                
+                self.frameextent = list(frameborders)
+                self.frameextent = [int(x/self.ratio) for x in self.frameextent]
+                self.frameextent = tuple(self.frameextent)
+                                                
+                self.panel.rubberband.reset()
+                self.panel.rubberband.enabled = False
+                
+                
+                #toggle the frame icon to 'on' position
+                self.toolbar.ToggleTool(ID_FRAME,2)
+                
+                self.toolbar.EnableTool(ID_CALIPER , True)
+                self.toolbar.EnableTool(ID_CALIB   , True)
+                #self.toolbar.EnableTool(ID_REMOVE  , False)
+                #self.toolbar.EnableTool(ID_STAMP   , False)
+                self.toolbar.EnableTool(ID_PREV    , True)
+                self.toolbar.EnableTool(ID_NEXT    , True)
+                self.toolbar.EnableTool(ID_SAVE    , True)
+            #self.toolbar.EnableTool(ID_FRAMEON, True)
+                
+                #redraw image
+                self.DisplayImage()
+                    
     def InitializeAll(self):
         """
               Values that have to be initialized
@@ -674,6 +759,9 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_PREV    , False)
         self.toolbar.EnableTool(ID_NEXT    , False)
         self.toolbar.EnableTool(ID_SAVE    , False)
+        self.toolbar.EnableTool(ID_FRAME   , False)
+        #self.toolbar.EnableTool(ID_FRAMEON , False)
+                
         
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
@@ -733,19 +821,15 @@ class MyFrame(wx.Frame):
         
         width_im, height_im = im.size
         if width_im/height_im > width_win/height_win:
-            ratio = width_win / width_im
+            self.ratio = width_win / width_im
         else:
-            ratio = height_win / height_im
+            self.ratio = height_win / height_im
         
-        im = im.resize((int(width_im*ratio),int(height_im*ratio)),Image.ANTIALIAS)
+        im = im.resize((int(width_im*self.ratio),int(height_im*self.ratio)),Image.ANTIALIAS)
         self.imagewidth,self.imageheight = im.size  # the size as displayed
         return im
     
     def DisplayImage(self):
-       
-        self.panel.bmp = self.GetBmpfromPIL(self.img)
-        if self.panel.bmp == None:
-           return 0
         
         #If there was an image before, save the note 
         if self.IMAGE_SELECTED == "TRUE":
@@ -754,6 +838,12 @@ class MyFrame(wx.Frame):
         else:
             self.IMAGE_SELECTED = "TRUE"
         
+        self.notepad.FillNote(self.img)  #get notes
+               
+        self.panel.bmp = self.GetBmpfromPIL(self.img)
+        if self.panel.bmp == None:
+           return 0
+                
         self.rootdir = os.path.dirname(self.img)
 
         dc = wx.ClientDC(self.panel)
@@ -763,8 +853,7 @@ class MyFrame(wx.Frame):
 
         dc.Blit(0,0,self.width-self.sidepanelsize, self.panel.caliper.height,memdc,0,0)
         
-        self.notepad.FillNote(self.img)  #get notes
-        
+                
         self.SetStatusText(os.path.basename(self.img),1)
         
         calibrated = ( self.panel.caliper.calib <> 0 ) # Will be 0 if not calibrated
@@ -780,6 +869,8 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_PREV, True)
         self.toolbar.EnableTool(ID_NEXT, True)
         self.toolbar.EnableTool(ID_SAVE, True)
+        self.toolbar.EnableTool(ID_FRAME, True)
+        #self.toolbar.EnableTool(ID_FRAMEON, True)
         
     def DisplayPlayList(self):
         self.splitter.SplitVertically(self.notebookpanel,self.list)
@@ -840,6 +931,15 @@ class MyFrame(wx.Frame):
 
     def GetBmpfromPIL( self,img ):
         self.imsmall = Image.open( img, 'r')
+        
+        #print self.frameextent
+        #if frame is specified, crop image
+        if self.frameextent <> (0,0,0,0):
+            self.imsmall = self.imsmall.crop(self.frameextent)
+            self.ZOOMFRAMEON = True
+        else:
+            self.ZOOMFRAMEON = False
+                
         self.imsmall = self.ScaleImage(self.imsmall,self.width-self.sidepanelsize,self.panel.caliper.height)
         image = apply( wx.EmptyImage, self.imsmall.size )
         image.SetData( self.imsmall.convert( "RGB").tostring() )
