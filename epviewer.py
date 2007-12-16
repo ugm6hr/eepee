@@ -873,18 +873,25 @@ class MyFrame(wx.Frame):
         
         self.slidestrings = self.parseNoteString(self.notepad.notes)
         
+        self.slide1.title = ''
+        self.slide1.text = ''
+        self.slide2.title = ''
+        self.slide2.text = ''
+        
+        
         if len(self.slidestrings) > 0:
             title,text = self.parseSlideString(self.slidestrings[0])
             self.slide1.title = title
             self.slide1.text = text
-            self.slide1.drawSlide()
-            
+                        
             if len(self.slidestrings) > 1:
                 title,text = self.parseSlideString(self.slidestrings[1])
                 self.slide2.title = title
                 self.slide2.text = text
-                self.slide2.drawSlide()    
-               
+            
+        self.slide1.drawSlide()
+        self.slide2.drawSlide()
+                       
         self.panel.bmp = self.GetBmpfromPIL(self.img)
         if self.panel.bmp == None:
            return 0
