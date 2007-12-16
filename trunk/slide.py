@@ -1,51 +1,52 @@
 """
-richtextctrl for making a slide object
+html window for making a slide object
 """
 
-import wx.richtext
+import wx.html
 
-class Slide(wx.richtext.RichTextCtrl):
+class Slide(wx.html.HtmlWindow):
     """
     The slide object
     """
     def __init__(self,parent):
-        wx.richtext.RichTextCtrl.__init__(self,parent,style = wx.TE_MULTILINE | wx.TE_READONLY)
+        wx.html.HtmlWindow.__init__(self,parent)
+        
         self.title = ''
         self.text = ''
         
-        self.drawSlide()
+        slidepage = self.makeSlidePage()
+        
+        self.SetPage(slidepage)
     
-    def addTitle(self):
+    def makeSlidePage(self):
         """
-        Set the input title string as
-        the title for the slide
+        format a page in html using the 
+        title and text
+        HtmlWindow does not support stylesheets
         """
-        self.BeginFontSize(40)
-        self.BeginBold()
+        pageopentag = '<html><body bgcolor=#6666FF>'
+        pageclosetag = '</html></body>'
+        titleopentag = "<h1 align='center'><font size='40' face='Verdana' color=#FFFF00>"
+        titleclosetag = "</font></h1>"
+        textopentag = "<pre><font size='32' face='Verdana' color=#FFFF00>"
+        textclosetag = "</font></pre>"
         
-        self.AppendText(self.title)
-        
-        self.EndFontSize()
-        self.EndBold()
-        
-        
-    def addText(self):
-        """
-        Add non-title lines after the title
-        """
-        self.BeginFontSize(32)
-                
-        self.AppendText(self.text)
-        
-        self.EndFontSize()
-        
-        
+        slidepage = ''.join([pageopentag,
+                            titleopentag,
+                            self.title,
+                            titleclosetag,
+                            textopentag,
+                            self.text,
+                            textclosetag])
+        return slidepage
+    
     def drawSlide(self):
         """
         draw the slide.
         Useful to refresh the slide if title or lines change        
         """
-        self.addTitle()
-        self.addText()
+        #self.SetPage("") #clear the page
+        slidepage = self.makeSlidePage()
+        self.SetPage(slidepage)
         
     
