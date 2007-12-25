@@ -9,6 +9,17 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 from slide import Slide
 
+## Import Image plugins separately and then convince Image that is
+## fully initialized - needed when compiling for windows, otherwise
+## I am not able to open tiff files with the windows binaries
+import PngImagePlugin
+import BmpImagePlugin
+import TiffImagePlugin
+import GifImagePlugin
+import JpegImagePlugin
+Image._initialized = 2
+###
+
 TITLE          = "EP viewer"
 ABOUT          = """ 
 An application to view and analyze EP tracings\n   
@@ -144,18 +155,22 @@ class NotePad(wx.Panel):
         Save the note to the file with 
               same name as image with suffix 'note'
         """
-
-        self.notes = self.pad.GetValue()
-        fi = open(self.notefile,'w')
         
+        self.notes = self.pad.GetValue()
+        
+        ## dont litter with a note if there is nothing to note !
+        if self.notes == '' and \
+           self.parentframe.panel.caliper.calib == 0 and \
+           self.parentframe.frameextent == (0,0,0,0):
+            return
+        
+        fi = open(self.notefile,'w')
         fi.write('Calibration:%s\n' % (self.parentframe.panel.caliper.calib)) 
         fi.write('Zoomframe:%s,%s,%s,%s\n' % (self.parentframe.frameextent[0],
                                               self.parentframe.frameextent[1],
                                               self.parentframe.frameextent[2],
                                               self.parentframe.frameextent[3]))
-                                              
         fi.write(self.notes)
-        
         fi.close()
         
     def parseNote(self): 
@@ -625,9 +640,13 @@ class MyFrame(wx.Frame):
                                              , longHelp='Open next image in playlist')
         
         self.toolbar.AddSeparator()
-        self.toolbar.AddCheckLabelTool(ID_FRAME   , 'Select frame'          
-                                             ,  getBitmap("frame")
-                                             , longHelp='Select frame for zoom')
+        
+        ### Disable for now
+        #self.toolbar.AddCheckLabelTool(ID_FRAME   , 'Select frame'          
+        #                                     ,  getBitmap("frame")
+        #                                     , longHelp='Select frame for zoom')
+        ####
+        
         self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
                                              ,  getBitmap("save")
                                              , longHelp='Save the image with stamped calipers')
@@ -656,24 +675,24 @@ class MyFrame(wx.Frame):
         ##----------------------------------------------------------------------------##
 
         ##-----------NOTEBOOK--------------------------------------------------------##
-        nb = wx.Notebook(self.notebookpanel)
+        self.nb = wx.Notebook(self.notebookpanel)
         
-        self.notepad = NotePad(nb,False)
-        self.panel = CustomWindow(nb,-1)
+        self.notepad = NotePad(self.nb,False)
+        self.panel = CustomWindow(self.nb,-1)
         
-        self.slide1 = Slide(nb)
-        self.slide1.drawSlide()
-        
-        self.slide2 = Slide(nb)
-        self.slide2.drawSlide()
+        #~ self.slide1 = Slide(self.nb)
+        #~ self.slide1.drawSlide()
+        #~ 
+        #~ self.slide2 = Slide(self.nb)
+        #~ self.slide2.drawSlide()
                         
-        nb.AddPage(self.panel, "Tracing")
-        nb.AddPage(self.notepad, "Notes")
-        nb.AddPage(self.slide1, "Slide 1")
-        nb.AddPage(self.slide2, "Slide 2")
+        self.nb.AddPage(self.panel, "Tracing")
+        self.nb.AddPage(self.notepad, "Notes")
+        #~ self.nb.AddPage(self.slide1, "Slide 1")
+        #~ self.nb.AddPage(self.slide2, "Slide 2")
         
         sizer = wx.BoxSizer()
-        sizer.Add(nb, 1, wx.EXPAND)
+        sizer.Add(self.nb, 1, wx.EXPAND)
         self.notebookpanel.SetSizer(sizer)
         
         ##----------------------------------------------------------------------------##        
@@ -704,18 +723,18 @@ class MyFrame(wx.Frame):
         self.width = 0 #not initialized
         self.ZOOMFRAMEON = False
         
+        self.slides = []
         self.slide_delimiter = '=='
         self.title_delimiter = '**'
         
         self.InitializeAll()
     
-    
+           
     def SelectFrame(self,event):
         """
         Select the zoomframe using rubberband if not prev selected.
         If zoomframe is already on, unzoom now
         """
-        print self.ZOOMFRAMEON
         #starting the rubberband
         if not self.ZOOMFRAMEON:
             
@@ -768,8 +787,8 @@ class MyFrame(wx.Frame):
                     
     def InitializeAll(self):
         """
-              Values that have to be initialized
-              for every new image
+        Values that have to be initialized
+        for every new image
         """
         
         self.panel.CALIPERFLAG = "False"
@@ -781,7 +800,20 @@ class MyFrame(wx.Frame):
         self.SetStatusText("No file selected",1)
         self.SetStatusText("",2)
         self.SetStatusText("",3)
+        
+        #clear old slides
                 
+        for slideindex in range(2,self.nb.GetPageCount()):
+            self.nb.DeletePage(slideindex)
+        self.slides = []
+        
+        # ? wxpython bug
+        # one page remains undeleted sometimes
+        # just check for this and delete it again !
+        if self.nb.GetPageCount() > 2:
+            for slideindex in range(2,self.nb.GetPageCount()):
+                self.nb.DeletePage(slideindex)
+                        
         #disable these icons initially
         self.toolbar.EnableTool(ID_CALIPER , False)
         self.toolbar.EnableTool(ID_CALIB   , False)
@@ -792,7 +824,7 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_SAVE    , False)
         self.toolbar.EnableTool(ID_FRAME   , False)
         #self.toolbar.EnableTool(ID_FRAMEON , False)
-                
+        self.toolbar.ToggleTool(ID_FRAME,0)        
         
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
@@ -827,6 +859,7 @@ class MyFrame(wx.Frame):
     def JumpInList(self,event): #double clicked on playlist to 'jump'
       self.playlist.nowshowing = self.list.GetSelection()
       self.img = self.playlist.playlist[self.playlist.nowshowing]
+      self.InitializeAll()
       self.DisplayImage()
           
     def OnClose(self,event):
@@ -851,16 +884,41 @@ class MyFrame(wx.Frame):
     def ScaleImage(self,im,width_win,height_win): #scale image to smaller than w x h, but maintain aspect ratio
         
         width_im, height_im = im.size
+        print width_im, height_im, width_win, height_win
         if width_im/height_im > width_win/height_win:
             self.ratio = width_win / width_im
         else:
             self.ratio = height_win / height_im
-        
+       
         im = im.resize((int(width_im*self.ratio),int(height_im*self.ratio)),Image.ANTIALIAS)
         self.imagewidth,self.imageheight = im.size  # the size as displayed
         return im
     
+    def makeSlide(self,slidestring,slidenum):
+        """
+        Make a slide and add to notebook
+        Title and text for slide are obtained 
+        by parsing the slide string
+        slidenum is the number of the current slide
+        with the slide numbers beginning with 1
+        """
+        
+        # add a new slide - all slides are in a list
+        self.slides.append(Slide(self.nb))
+                
+        # Name of slide is in format 'Slide (n)' 
+        # n is slidenum+1 so that it starts with 1
+        self.nb.AddPage(self.slides[slidenum],"Slide "+str(slidenum+1))
+        
+        title,text = self.parseSlideString(slidestring)
+        self.slides[-1].title = title
+        self.slides[-1].text = text
+        
+        self.slides[-1].drawSlide()
+    
     def DisplayImage(self):
+        
+        self.SetStatusText("Loading file...",1)
         
         #If there was an image before, save the note 
         if self.IMAGE_SELECTED == "TRUE":
@@ -868,30 +926,15 @@ class MyFrame(wx.Frame):
             self.notepad.pad.Clear()
         else:
             self.IMAGE_SELECTED = "TRUE"
-        
+                
         self.notepad.FillNote(self.img)  #get notes
         
         self.slidestrings = self.parseNoteString(self.notepad.notes)
         
-        self.slide1.title = ''
-        self.slide1.text = ''
-        self.slide2.title = ''
-        self.slide2.text = ''
+        for slidenum in range(len(self.slidestrings)):
+            self.makeSlide(self.slidestrings[slidenum],slidenum)
         
-        
-        if len(self.slidestrings) > 0:
-            title,text = self.parseSlideString(self.slidestrings[0])
-            self.slide1.title = title
-            self.slide1.text = text
-                        
-            if len(self.slidestrings) > 1:
-                title,text = self.parseSlideString(self.slidestrings[1])
-                self.slide2.title = title
-                self.slide2.text = text
-            
-        self.slide1.drawSlide()
-        self.slide2.drawSlide()
-                       
+                               
         self.panel.bmp = self.GetBmpfromPIL(self.img)
         if self.panel.bmp == None:
            return 0
@@ -930,6 +973,18 @@ class MyFrame(wx.Frame):
         the title and text for the slide
         """
         parts = slidestring.split(self.title_delimiter)
+        
+        #if there is no title
+        if len(parts) == 1:
+            title = ''
+            text = slidestring
+            return title, text
+        
+        #if there is only one title delimiter
+        if len(parts) == 2:
+            self.SetStatusText("Missing title delimiter in slide",3)
+            return '', ''
+        
         title = parts[1]
         text = slidestring.replace(self.title_delimiter+title+self.title_delimiter,'')  #elegantly allows title to be anywhere
         
@@ -947,6 +1002,9 @@ class MyFrame(wx.Frame):
         parts = notestring.split(self.slide_delimiter)
         for i in range(1,len(parts),2):
             slidestrings.append(parts[i])
+            
+        if len(parts)%2 == 0:
+            self.SetStatusText("Missing slide delimiter",3)
         
         return slidestrings
         
@@ -1023,7 +1081,6 @@ class MyFrame(wx.Frame):
         return image.ConvertToBitmap() # wxBitmapFromImage(image)
 #-----------------------------------------------------------------------------------------------------------
 
-
 class MyApp(wx.App):
 
     def OnInit(self):
@@ -1032,6 +1089,13 @@ class MyApp(wx.App):
         self.SetTopWindow(frame)
         return 1
 #--------------------------------------------------------------------------------------------------
+
+## write errors to a log file
+
+#logfile = 'eepee.log'
+#fsock = open(logfile,'w')
+#sys.stderr = fsock
+##
 
 app = MyApp(0)
 app.MainLoop()
