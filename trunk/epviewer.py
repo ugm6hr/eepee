@@ -32,7 +32,7 @@ http:\\code.google.com\p\eepee\n"""
 #wx IDs
 
 ID_ABOUT    =   wx.NewId()
-ID_SELECT   =   wx.NewId()
+ID_OPEN   =   wx.NewId()
 ID_CALIB    =   wx.NewId()
 ID_CALIPER  =   wx.NewId()
 ID_EXIT     =   wx.NewId()
@@ -487,12 +487,30 @@ class CustomWindow(wx.Window):
         elif self.caliper.STATUS == "First":
             dc = wx.ClientDC(self)
             self.caliper.ClickLeft(dc)
+            
+            self.frame.toolbar.EnableTool(ID_OPEN , False)
+            self.frame.toolbar.EnableTool(ID_CALIPER , False)
+            self.frame.toolbar.EnableTool(ID_CALIB   , False)
+            #self.frame.toolbar.EnableTool(ID_REMOVE  , False)
+            #self.frame.toolbar.EnableTool(ID_STAMP   , False)
+            self.frame.toolbar.EnableTool(ID_PREV    , False)
+            self.frame.toolbar.EnableTool(ID_NEXT    , False)
+            self.frame.toolbar.EnableTool(ID_SAVE    , False)
+            
+            self.frame.AcceptKeyPress = False
                   
         #Calipers and not calibrate, second caliper
         elif self.caliper.STATUS == "Second" and self.caliper.CALIBRATE == "False":
             self.caliper.ClickRight()
+            
+            self.frame.toolbar.EnableTool(ID_OPEN , True)
             self.frame.toolbar.EnableTool(ID_REMOVE, True)
             self.frame.toolbar.EnableTool(ID_STAMP, True)
+            self.frame.toolbar.EnableTool(ID_PREV    , True)
+            self.frame.toolbar.EnableTool(ID_NEXT    , True)
+            self.frame.toolbar.EnableTool(ID_SAVE    , True)
+            
+            self.frame.AcceptKeyPress = True
         
         #calibrate, second
         elif self.caliper.STATUS == "Second" and  self.caliper.CALIBRATE == "True":
@@ -501,6 +519,17 @@ class CustomWindow(wx.Window):
             self.caliper.STATUS = "None"
             self.caliper.CALIBRATE = "False"
             self.frame.SetStatusText('Calibrated',2)
+            
+            self.frame.AcceptKeyPress = True
+            
+            #self.frame.toolbar.EnableTool(ID_REMOVE, True)
+            #self.frame.toolbar.EnableTool(ID_STAMP, True)
+            self.frame.toolbar.EnableTool(ID_OPEN , True)
+            self.frame.toolbar.EnableTool(ID_PREV    , True)
+            self.frame.toolbar.EnableTool(ID_NEXT    , True)
+            self.frame.toolbar.EnableTool(ID_SAVE    , True)
+            self.frame.toolbar.EnableTool(ID_CALIB   , True)
+            self.frame.toolbar.EnableTool(ID_CALIPER , True)
             
         #ready to move
         elif self.caliper.STATUS == "Done":  #caliper is drawn
@@ -580,10 +609,14 @@ class CustomWindow(wx.Window):
     def CaliperRemove(self,event):
         dc = wx.ClientDC(self)
         self.caliper.Remove(dc)
+        self.frame.toolbar.EnableTool(ID_CALIPER , True)
+        self.frame.toolbar.EnableTool(ID_CALIB   , True)
         
     def CaliperStamp(self,event):
         dc = wx.ClientDC(self)
         self.caliper.Stamp(dc)
+        self.frame.toolbar.EnableTool(ID_CALIPER , True)
+        self.frame.toolbar.EnableTool(ID_CALIB   , True)
        
     def OnPaint(self, event):
         dc = wx.PaintDC(self)
@@ -615,7 +648,7 @@ class MyFrame(wx.Frame):
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((20,20))
 
-        self.toolbar.AddLabelTool(ID_SELECT  , 'Open'
+        self.toolbar.AddLabelTool(ID_OPEN  , 'Open'
                                              , getBitmap("open")
                                              , longHelp='Open a file')
         self.toolbar.AddSeparator()
@@ -698,7 +731,7 @@ class MyFrame(wx.Frame):
         ##----------------------------------------------------------------------------##        
         
         wx.EVT_MENU(self,  ID_ABOUT,   self.About)
-        wx.EVT_MENU(self,  ID_SELECT,  self.ChooseImage)
+        wx.EVT_MENU(self,  ID_OPEN,  self.ChooseImage)
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
         wx.EVT_MENU(self,  ID_CALIPER, self.CaliperStart)
         wx.EVT_MENU(self,  ID_CALIB,   self.CalibrateMeasure)
@@ -713,6 +746,12 @@ class MyFrame(wx.Frame):
                 
         self.Bind(wx.EVT_LISTBOX_DCLICK, self.JumpInList)
         
+        #bind keyboard events in the panel
+        self.panel.Bind(wx.EVT_KEY_DOWN,self.onKeyPress)
+        
+        #catch page changes in the notebook
+        wx.EVT_NOTEBOOK_PAGE_CHANGED(self.nb, -1, self.onPageChange)
+        
         self.RESIZE_FLAG = "TRUE"
         self.rootdir = os.getcwd()
         self.playlist = []
@@ -722,6 +761,8 @@ class MyFrame(wx.Frame):
         self.IMAGE_SELECTED = "False"  #Has an image been selected yet?
         self.width = 0 #not initialized
         self.ZOOMFRAMEON = False
+        # ready to accept keypress ?
+        self.AcceptKeyPress = True
         
         self.slides = []
         self.slide_delimiter = '=='
@@ -729,7 +770,47 @@ class MyFrame(wx.Frame):
         
         self.InitializeAll()
     
-           
+    def onKeyPress(self,event):
+        """
+        Bind events to keyboard shortcuts
+        """
+        if not self.AcceptKeyPress:
+            return
+         
+        kcode = event.GetKeyCode()
+         
+        if kcode == 79: # 'o'
+            self.ChooseImage(event)
+        elif kcode == 66: # 'b'
+            self.CalibrateMeasure(event)
+        elif kcode == 67: # 'c'
+            self.CaliperStart(event)
+        elif kcode == 84: # 't'
+            self.panel.CaliperStamp(event)
+        elif kcode == 82: # 'r'
+            self.panel.CaliperRemove(event)
+        elif kcode == 314: # left arrow
+            self.PrevOnList(event)
+        elif kcode == 316: # right arrow
+            self.NextOnList(event)
+        elif kcode == 83: # 's'
+            self.SaveImage(event)
+        elif kcode == 81: # 'q'
+            self.OnClose(event)
+    
+    
+    def onPageChange(self,event):
+        """
+        Watch out for page changes while a caliper
+        is active
+        """
+        if self.panel.caliper.STATUS <> "None":
+            self.panel.caliper.STATUS = "None"
+            self.toolbar.EnableTool(ID_CALIPER , True)
+            self.toolbar.EnableTool(ID_CALIB   , True)
+            self.toolbar.EnableTool(ID_REMOVE  , False)
+            self.toolbar.EnableTool(ID_STAMP   , False)
+    
     def SelectFrame(self,event):
         """
         Select the zoomframe using rubberband if not prev selected.
@@ -802,18 +883,15 @@ class MyFrame(wx.Frame):
         self.SetStatusText("",3)
         
         #clear old slides
-                
-        for slideindex in range(2,self.nb.GetPageCount()):
-            self.nb.DeletePage(slideindex)
-        self.slides = []
-        
-        # ? wxpython bug
-        # one page remains undeleted sometimes
-        # just check for this and delete it again !
-        if self.nb.GetPageCount() > 2:
+        # bug in wxpython results in some pages not getting
+        # deleted at each pass
+        # So I am looping till I am done
+        while self.nb.GetPageCount() > 2:
             for slideindex in range(2,self.nb.GetPageCount()):
                 self.nb.DeletePage(slideindex)
-                        
+        self.slides = []
+        
+                       
         #disable these icons initially
         self.toolbar.EnableTool(ID_CALIPER , False)
         self.toolbar.EnableTool(ID_CALIB   , False)
@@ -822,9 +900,9 @@ class MyFrame(wx.Frame):
         self.toolbar.EnableTool(ID_PREV    , False)
         self.toolbar.EnableTool(ID_NEXT    , False)
         self.toolbar.EnableTool(ID_SAVE    , False)
-        self.toolbar.EnableTool(ID_FRAME   , False)
+        #self.toolbar.EnableTool(ID_FRAME   , False)
         #self.toolbar.EnableTool(ID_FRAMEON , False)
-        self.toolbar.ToggleTool(ID_FRAME,0)        
+        #self.toolbar.ToggleTool(ID_FRAME,0)        
         
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
@@ -884,7 +962,7 @@ class MyFrame(wx.Frame):
     def ScaleImage(self,im,width_win,height_win): #scale image to smaller than w x h, but maintain aspect ratio
         
         width_im, height_im = im.size
-        print width_im, height_im, width_win, height_win
+        
         if width_im/height_im > width_win/height_win:
             self.ratio = width_win / width_im
         else:
@@ -1004,7 +1082,7 @@ class MyFrame(wx.Frame):
             slidestrings.append(parts[i])
             
         if len(parts)%2 == 0:
-            self.SetStatusText("Missing slide delimiter",3)
+            pself.SetStatusText("Missing slide delimiter",3)
         
         return slidestrings
         
@@ -1020,9 +1098,7 @@ class MyFrame(wx.Frame):
     
     def ChooseImage(self,event):
 
-        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF\
-                                     *.jpg;*.JPG;*.jpeg;*.JPEG;\
-                                     *.bmp;*.BMP;*.gif;*.GIF'
+        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;                                     *.bmp;*.BMP;*.gif;*.GIF'
         dlg = wx.FileDialog(self,self.rootdir,style=wx.OPEN,wildcard=filters)
 
         if dlg.ShowModal() == wx.ID_OK:
