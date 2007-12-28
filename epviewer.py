@@ -4,7 +4,7 @@ An application for viewing and analyzing ECGs and EP tracings
 """
 
 from __future__ import division
-import wx, Image, os, copy
+import wx, Image, os, copy, sys
 from customrubberband import RubberBand
 from geticons import getBitmap
 from slide import Slide
