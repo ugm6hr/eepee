@@ -1,4 +1,5 @@
 #summary Included and Planned features
+#labels Featured
 
 = Included features =
 
