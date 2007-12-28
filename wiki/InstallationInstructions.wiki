@@ -1,4 +1,5 @@
 #summary How to install.
+#labels Featured
 
 = Introduction =
 
@@ -16,7 +17,7 @@ Tested only with Windows 2000 and XP so far.
 
 == Requirements: ==
   * Python >= 2.4
-  * WxPython 
+  * Wxpython >=2.6
   * Python Imaging Library
 
 == To install ==
