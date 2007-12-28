@@ -1,4 +1,5 @@
 #summary A quick introduction
+#labels Featured
 
 = Get the images =
 
