@@ -9,12 +9,14 @@
   * Image with the 'stamped' calipers can be stored
   * Notes can be stored for each image - notes are automatically stored.
   * 'Playlist' is automatically created with the image files in the selected directory.
+  * Calibration is saved automatically
+  * Slides can be made
 
 = Planned features =
 
   * Printing of modified images
   * Enable custom playlists
-  * Calibration will be saved so image doesnt have to recalibrated
+  * ~~Calibration will be saved so image doesnt have to recalibrated~~
   * Zoom into a selected 'frame' within the image
   * Ability to make laddergrams
-  * Ability to make simple 'slides' with question / answers
+  * ~~Ability to make simple 'slides' with question / answers~~
