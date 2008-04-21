@@ -19,7 +19,6 @@ import TiffImagePlugin
 import GifImagePlugin
 import JpegImagePlugin
 Image._initialized = 2
-###
 
 ## ------------------------------------------
 _title          = "EP viewer"
@@ -31,6 +30,99 @@ For more information and for updates visit\n
 http:\\code.google.com\p\eepee\n"""
 _version = "0.7.0"
 _author = "Raja Selvaraj"
+
+
+#------------------------------------------------------------------------------
+class NotePad(wx.Panel):
+    """ Notepad to write and display notes"""
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
+            
+        s = wx.BoxSizer()
+        s.Add(self.pad,1,wx.EXPAND)
+        self.SetSizer(s)
+        
+        self.pad.Clear()
+        self.frame = wx.GetTopLevelParent(self)
+        self.notes = ''
+        self.frame.frameextent = (0,0,0,0)
+        self.frame.window.measurement.calibration = 0 
+        self.frame.SetStatusText("Not Calibrated",2)
+        
+    def FillNote(self,imagefilename):
+        """
+        Fill the notebook at beginning with previously stored notes if they 
+        have been stored
+        """
+        (w,h) = self.GetSize()# because GetSize doesnt work in init
+        self.pad.SetSize((w*0.6, h*0.9)) 
+        self.pad.SetPosition((w*0.2, h*0.05)) # nicely centered potrait page
+        self.notefile = os.path.splitext(imagefilename)[0] + '.note'
+        
+        if os.path.exists(self.notefile):
+            self.parseNote()
+            self.pad.write(self.notes)
+           
+        #~ else:   #else start empty
+            #~ self.parentframe.frameextent = (0,0,0,0)
+            #~ self.parentframe.panel.caliper.calib = 0
+            #~ self.pad.Clear()
+            
+    def SaveNote(self):
+        """Save the note to the file with same name as image with suffix 'note'"""
+        self.notes = self.pad.GetValue()
+
+        # if no changes to save, dont write a note
+        if self.notes == '' and \
+           self.frame.window.measurement.calibration == 0 and \
+           self.frame.frameextent == (0,0,0,0):
+               return
+            
+        # else save   
+        fi = open(self.notefile,'w')
+        fi.write('Calibration:%s\n' % (self.frame.window.measurement.calibration)) 
+        fi.write('Zoomframe:%s,%s,%s,%s\n' % self.frame.frameextent)
+        #~ (self.frame.frameextent[0],
+                                              #~ self.frame.frameextent[1],
+                                              #~ self.frame.frameextent[2],
+                                              #~ self.frame.frameextent[3]))
+                                              
+        fi.write(self.notes)
+        fi.close()
+        
+    def parseNote(self): 
+        """
+        Parse the stored note and extract the information. Notes can be a 
+        multi-line entry and will be stored at the end of the file.
+        Single line entries come before. All have a header of the form 
+        'somestring:' followed by the data itself. Empty lines are not allowed 
+        except at the end.        
+        """
+        
+        lines_to_parse = open(self.notefile,'r').readlines()
+        linecount = 0
+        
+        try:
+            self.frame.window.measurement.calibration = float(
+                                      lines_to_parse[0].lstrip('Calibration:'))
+            self.parentframe.frameextent = tuple(
+                                [int(x) for x in 
+                                lines_to_parse[1].lstrip('Zoomframe:').split(',')])
+            self.notes = ''.join(lines_to_parse[2:])
+            
+        #If cannot parse, dump the whole thing on the pad
+        except:
+            self.notes = ''.join(lines_to_parse[:])
+            #~ self.parentframe.frameextent = (0,0,0,0) #FIXME: should be in initalize
+            #~ self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
+        
+        if self.frame.window.measurement.calibration != 0:
+            self.frame.window.measurement.units = 'ms'
+            self.frame.SetStatusText("Calibrated",2)
+        #~ else:
+            #~ self.frame.SetStatusText("Not Calibrated",2)
+            
 
 #-------------------------------------------------------------------------------
 class Caliper():
@@ -115,8 +207,8 @@ class PlayList():
         allfiles = os.listdir(dirname)
                 
         for eachfile in allfiles:
-            if os.path.splitext(eachfile)[1].lower() in \
-               ['bmp','png','jpg','jpeg','tif','tiff','gif']:
+            if os.path.splitext(eachfile.decode('utf-8'))[1].lower() in [
+                             '.bmp','.png','.jpg','.jpeg','.tif','.tiff','.gif']:
                    self.playlist.append(os.path.join(dirname,eachfile))
         self.playlist.sort()
         self.nowshowing = self.playlist.index(filename)
@@ -167,7 +259,7 @@ class MainWindow(wx.Window):
         self.zoomselected = 0
         self.cursors = [wx.CURSOR_ARROW, wx.CURSOR_SIZEWE,
                         wx.CURSOR_SIZEWE, wx.CURSOR_HAND]
-        self.bmp = None
+        #self.bmp = None
         self.measurement = Measurement(self,-1)
         
                 
@@ -429,9 +521,9 @@ class MainWindow(wx.Window):
               
     def OnPaint(self, event):
         dc = wx.PaintDC(self)
-        if self.bmp <> None:
+        if self.frame.displayimage.bmp <> None:
             memdc = wx.MemoryDC()
-            memdc.SelectObject(self.bmp)
+            memdc.SelectObject(self.frame.displayimage.bmp)
             dc.Blit(0,0,self.GetSize()[0]-self.frame.sidepanelsize,
                                         self.GetSize()[1],memdc,0,0)
             self.prevpos =wx.Point(0,0)
@@ -444,6 +536,7 @@ class DisplayImage():
         self.windowwidth = 0
         self.windowheight = 0
         self.parent = parent
+        self.bmp = None
         
     def GetImage(self,imagefilepath):
         self.LoadandResizeImage(imagefilepath)
@@ -569,9 +662,31 @@ class MyFrame(wx.Frame):
                                   , longHelp='About Eepee')
         self.toolbar.Realize()
         
+        
+        ## SPLITTER - contains notebook and list
+        self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
+        self.splitter.SetMinimumPaneSize(1)
+        self.notebookpanel = wx.Panel(self.splitter,-1)
+        self.listbox = wx.ListBox(self.splitter,-1)
+        self.listbox.Show(True)
+        self.splitter.SplitVertically(self.notebookpanel,self.listbox)
+        self.splitter.Unsplit() #I dont know the size yet
+        
+        ## NOTEBOOK - contains main window and notepad
+        nb = wx.Notebook(self.notebookpanel)
+        
         ## Main window
-        self.window = MainWindow(self,-1)
+        self.window = MainWindow(nb,-1)
         self.displayimage = DisplayImage(self)
+        
+        ## notepad
+        self.notepad = NotePad(nb)
+                       
+        nb.AddPage(self.window, "Tracing")
+        nb.AddPage(self.notepad, "Notes")
+        sizer = wx.BoxSizer()
+        sizer.Add(nb, 1, wx.EXPAND)
+        self.notebookpanel.SetSizer(sizer)        
         
         ## Bindings
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
@@ -585,7 +700,7 @@ class MyFrame(wx.Frame):
         
         ## variables
         self.rootdir = '/data'  # TODO: This is only for testing
-        self.sidepanelsize = 0
+        self.sidepanelsize = 40
         #self.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
         
     def Alert(self,title,msg="Undefined"):
@@ -597,6 +712,7 @@ class MyFrame(wx.Frame):
         self.Alert("About",_about)
   
     def OnClose(self,event):
+        self.notepad.SaveNote()
         self.Destroy()
         
     def CaliperStart(self,event):
@@ -606,11 +722,21 @@ class MyFrame(wx.Frame):
         self.window.caliperselected = 1
         self.window.calibrateselected = 1
 
+    def DisplayPlayList(self):
+        self.splitter.SplitVertically(self.notebookpanel,self.listbox)
+        self.splitter.SetSashPosition(self.width-self.sidepanelsize, True)
+
+        self.listbox.Clear()
+        for filename in self.playlist.playlist:
+            self.listbox.Append(os.path.split(filename)[1])
+            
+        self.listbox.SetSelection(self.playlist.nowshowing)
+    
     def SelectandDisplayImage(self,event):
         # TODO: define rootdir
-        width, height = self.window.GetSize()
+        self.width, self.height = self.window.GetSize()
         self.displayimage.windowwidth, self.displayimage.windowheight = \
-                                       width, height
+                                       self.width, self.height
         filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF\
                                      *.jpg;*.JPG;*.jpeg;*.JPEG;\
                                      *.bmp;*.BMP;*.gif;*.GIF'
@@ -620,14 +746,18 @@ class MyFrame(wx.Frame):
         else:
             return
 
-        self.displayimage.GetImage(filepath)
         self.playlist = PlayList(filepath)
+        
+        self.displayimage.GetImage(filepath)
+        self.DisplayPlayList()
         
         dc = wx.ClientDC(self.window)
         dc.Clear()  #clear old image if still there
         memdc = wx.MemoryDC()
         memdc.SelectObject(self.displayimage.bmp)
-        dc.Blit(0, 0, width-self.sidepanelsize, height, memdc, 0, 0)
+        dc.Blit(0, 0, self.width-self.sidepanelsize, self.height, memdc, 0, 0)
+        
+        self.notepad.FillNote(filepath)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
