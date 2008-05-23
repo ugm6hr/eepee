@@ -43,7 +43,6 @@ class NotePad(wx.Panel):
         s.Add(self.pad,1,wx.EXPAND)
         self.SetSizer(s)
         
-        self.pad.Clear()
         self.frame = wx.GetTopLevelParent(self)
         self.notes = ''
         self.frame.frameextent = (0,0,0,0)
@@ -60,15 +59,11 @@ class NotePad(wx.Panel):
         self.pad.SetPosition((w*0.2, h*0.05)) # nicely centered potrait page
         self.notefile = os.path.splitext(imagefilename)[0] + '.note'
         
+        self.pad.Clear()
         if os.path.exists(self.notefile):
             self.parseNote()
             self.pad.write(self.notes)
-           
-        #~ else:   #else start empty
-            #~ self.parentframe.frameextent = (0,0,0,0)
-            #~ self.parentframe.panel.caliper.calib = 0
-            #~ self.pad.Clear()
-            
+                    
     def SaveNote(self):
         """Save the note to the file with same name as image with suffix 'note'"""
         self.notes = self.pad.GetValue()
@@ -83,10 +78,6 @@ class NotePad(wx.Panel):
         fi = open(self.notefile,'w')
         fi.write('Calibration:%s\n' % (self.frame.window.measurement.calibration)) 
         fi.write('Zoomframe:%s,%s,%s,%s\n' % self.frame.frameextent)
-        #~ (self.frame.frameextent[0],
-                                              #~ self.frame.frameextent[1],
-                                              #~ self.frame.frameextent[2],
-                                              #~ self.frame.frameextent[3]))
                                               
         fi.write(self.notes)
         fi.close()
@@ -114,15 +105,10 @@ class NotePad(wx.Panel):
         #If cannot parse, dump the whole thing on the pad
         except:
             self.notes = ''.join(lines_to_parse[:])
-            #~ self.parentframe.frameextent = (0,0,0,0) #FIXME: should be in initalize
-            #~ self.parentframe.panel.caliper.calib = 0 #FIXME: should be in initalize
         
         if self.frame.window.measurement.calibration != 0:
             self.frame.window.measurement.units = 'ms'
             self.frame.SetStatusText("Calibrated",2)
-        #~ else:
-            #~ self.frame.SetStatusText("Not Calibrated",2)
-            
 
 #-------------------------------------------------------------------------------
 class Caliper():
@@ -207,7 +193,7 @@ class PlayList():
         allfiles = os.listdir(dirname)
                 
         for eachfile in allfiles:
-            if os.path.splitext(eachfile.decode('utf-8'))[1].lower() in [
+            if os.path.splitext(eachfile)[1].lower() in [
                              '.bmp','.png','.jpg','.jpeg','.tif','.tiff','.gif']:
                    self.playlist.append(os.path.join(dirname,eachfile))
         self.playlist.sort()
@@ -253,6 +239,7 @@ class MainWindow(wx.Window):
         wx.EVT_PAINT(self, self.OnPaint)
         
         self.calipersonscreen = 0
+        self.caliperselectedtomove = 0
         self.calipertomove = 0
         self.caliperselected = 0
         self.calibrateselected = 0
@@ -268,6 +255,12 @@ class MainWindow(wx.Window):
         
         if keycode == 79: # 'o' = open
             self.frame.SelectandDisplayImage(event)
+
+        elif keycode == 366: # '<left arrow>' = prev
+            self.frame.SelectPrevImage(event)
+
+        elif keycode == 367: # '<right arrow>' = next
+            self.frame.SelectNextImage(event)
         
         elif keycode == 67: #'c'= caliperstart
             self.caliperselected = 1
@@ -342,16 +335,20 @@ class MainWindow(wx.Window):
                     self.MeasureandDisplay()                        
                     self.CaliperRemove()
                                         
-            # two calipers are already drawn and positioned, so hold to reposition
-            elif self.calipersonscreen == 3 and self.calipertomove == 0:
-                self.FindCalipertoMove(pos)
-                #set cursor accordingly
-                self.SetCursor(wx.StockCursor(self.cursors[self.calipertomove]))
-            
             # repositioning calipers, now fix it
             elif self.calipertomove <> 0:
                 self.calipertomove = 0
                 self.SetCursor(wx.StockCursor(self.cursors[0]))
+
+            # two calipers are already drawn and positioned, so hold to reposition
+            elif self.calipersonscreen == 3 and self.calipertomove == 0:
+                if self.caliperselectedtomove == 0:
+                    pass
+                else:
+                    self.calipertomove = self.caliperselectedtomove
+                    if self.calipertomove == 3:
+                        self.leftcaliperoffset = pos.x - self.leftcaliper.x1
+                        self.rightcaliperoffset = pos.x - self.rightcaliper.x1
                 
         elif self.zoomselected:
             pass
@@ -397,46 +394,52 @@ class MainWindow(wx.Window):
             self.MeasureandDisplay()
                         
         # Now calipersonscreen = 3
-        # reposition left caliper
-        elif self.calipertomove == 1:
-            self.leftcaliper.RemoveCaliper(dc)
-            self.leftcaliper.GetPosition(pos,0)
-            self.leftcaliper.PutCaliper(dc)
-            self.horizbar.RemoveCaliper(dc)
-            self.horizbar.GetPosition(pos,self.rightcaliper.x1)
-            self.horizbar.PutCaliper(dc)
-            self.MeasureandDisplay()
-        
-        # reposition right caliper
-        elif self.calipertomove == 2:
-            self.rightcaliper.RemoveCaliper(dc)
-            self.rightcaliper.GetPosition(pos,0)
-            self.rightcaliper.PutCaliper(dc)
-            self.horizbar.RemoveCaliper(dc)
-            self.horizbar.GetPosition(pos,self.leftcaliper.x1)
-            self.horizbar.PutCaliper(dc)
-            self.MeasureandDisplay()
+        elif self.calipersonscreen ==3:
+            # change cursor according to location
+            if self.calipertomove == 0:
+                self.FindCalipertoMove(pos)
+                #set cursor accordingly
+                self.SetCursor(wx.StockCursor(self.cursors[self.caliperselectedtomove]))
+            # reposition left caliper
+            elif self.calipertomove == 1:
+                self.leftcaliper.RemoveCaliper(dc)
+                self.leftcaliper.GetPosition(pos,0)
+                self.leftcaliper.PutCaliper(dc)
+                self.horizbar.RemoveCaliper(dc)
+                self.horizbar.GetPosition(pos,self.rightcaliper.x1)
+                self.horizbar.PutCaliper(dc)
+                self.MeasureandDisplay()
             
-        # reposition both calipers
-        elif self.calipertomove == 3:
-            self.leftcaliper.RemoveCaliper(dc)
-            self.rightcaliper.RemoveCaliper(dc)
-            self.horizbar.RemoveCaliper(dc)
-            
-            self.leftcaliper.GetPosition(pos,0)
-            self.leftcaliper.x1 += self.leftcaliperoffset
-            self.leftcaliper.x2 += self.leftcaliperoffset
-            
-            self.rightcaliper.GetPosition(pos,0)
-            self.rightcaliper.x1 += self.rightcaliperoffset
-            self.rightcaliper.x2 += self.rightcaliperoffset
-            
-            self.horizbar.GetPosition(pos,self.leftcaliper.x1)
-            self.horizbar.x1 = self.rightcaliper.x1 # and not pos.x
-            
-            self.leftcaliper.PutCaliper(dc)
-            self.rightcaliper.PutCaliper(dc)
-            self.horizbar.PutCaliper(dc)
+            # reposition right caliper
+            elif self.calipertomove == 2:
+                self.rightcaliper.RemoveCaliper(dc)
+                self.rightcaliper.GetPosition(pos,0)
+                self.rightcaliper.PutCaliper(dc)
+                self.horizbar.RemoveCaliper(dc)
+                self.horizbar.GetPosition(pos,self.leftcaliper.x1)
+                self.horizbar.PutCaliper(dc)
+                self.MeasureandDisplay()
+                
+            # reposition both calipers
+            elif self.calipertomove == 3:
+                self.leftcaliper.RemoveCaliper(dc)
+                self.rightcaliper.RemoveCaliper(dc)
+                self.horizbar.RemoveCaliper(dc)
+                
+                self.leftcaliper.GetPosition(pos,0)
+                self.leftcaliper.x1 += self.leftcaliperoffset
+                self.leftcaliper.x2 += self.leftcaliperoffset
+                
+                self.rightcaliper.GetPosition(pos,0)
+                self.rightcaliper.x1 += self.rightcaliperoffset
+                self.rightcaliper.x2 += self.rightcaliperoffset
+                
+                self.horizbar.GetPosition(pos,self.leftcaliper.x1)
+                self.horizbar.x1 = self.rightcaliper.x1 # and not pos.x
+                
+                self.leftcaliper.PutCaliper(dc)
+                self.rightcaliper.PutCaliper(dc)
+                self.horizbar.PutCaliper(dc)
             
     def CaliperRemove(self,event=0):
         """
@@ -506,18 +509,18 @@ class MainWindow(wx.Window):
         onrightcaliper    = (abs(pos.x-self.rightcaliper.x1)<5)
                 
         if onleftcaliper and not onhorizbar:
-            self.calipertomove = 1
+            self.caliperselectedtomove = 1
             
         elif onrightcaliper and not onhorizbar:
-            self.calipertomove = 2
+            self.caliperselectedtomove = 2
            
         elif betweencalipers and onhorizbar:
-            self.calipertomove = 3
-            self.leftcaliperoffset = pos.x - self.leftcaliper.x1
-            self.rightcaliperoffset = pos.x - self.rightcaliper.x1
+            self.caliperselectedtomove = 3
+            #self.leftcaliperoffset = pos.x - self.leftcaliper.x1
+            #self.rightcaliperoffset = pos.x - self.rightcaliper.x1
         
         else:
-            pass        
+            self.caliperselectedtomove = 0        
               
     def OnPaint(self, event):
         dc = wx.PaintDC(self)
@@ -695,6 +698,8 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_REMOVE, self.window.CaliperRemove)
         wx.EVT_MENU(self,  ID_STAMP, self.window.CaliperStamp)
         wx.EVT_MENU(self,  ID_SELECT, self.SelectandDisplayImage)
+        wx.EVT_MENU(self,  ID_PREV, self.SelectPrevImage)
+        wx.EVT_MENU(self,  ID_NEXT, self.SelectNextImage)
         wx.EVT_MENU(self,  ID_SAVE,   self.displayimage.SaveImage)
         wx.EVT_CLOSE(self, self.OnClose)
         
@@ -731,7 +736,29 @@ class MyFrame(wx.Frame):
             self.listbox.Append(os.path.split(filename)[1])
             
         self.listbox.SetSelection(self.playlist.nowshowing)
-    
+
+    def SelectNextImage(self,event):
+        self.playlist.nowshowing += 1
+        if self.playlist.nowshowing == len(self.playlist.playlist):
+            self.playlist.nowshowing = 0
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
+        self.BlitSelectedImage()
+        
+        self.notepad.FillNote(self.playlist.playlist[self.playlist.nowshowing])
+
+    def SelectPrevImage(self,event):
+        self.playlist.nowshowing -= 1
+        if self.playlist.nowshowing == -1:
+            self.playlist.nowshowing = len(self.playlist.playlist)-1
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
+        self.BlitSelectedImage()
+        
+        self.notepad.FillNote(self.playlist.playlist[self.playlist.nowshowing])
+        
     def SelectandDisplayImage(self,event):
         # TODO: define rootdir
         self.width, self.height = self.window.GetSize()
@@ -750,14 +777,15 @@ class MyFrame(wx.Frame):
         
         self.displayimage.GetImage(filepath)
         self.DisplayPlayList()
-        
+        self.BlitSelectedImage()        
+        self.notepad.FillNote(filepath)
+
+    def BlitSelectedImage(self):
         dc = wx.ClientDC(self.window)
         dc.Clear()  #clear old image if still there
         memdc = wx.MemoryDC()
         memdc.SelectObject(self.displayimage.bmp)
         dc.Blit(0, 0, self.width-self.sidepanelsize, self.height, memdc, 0, 0)
-        
-        self.notepad.FillNote(filepath)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
