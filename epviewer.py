@@ -28,7 +28,7 @@ Author: Raja S. \n
 rajajs@gmail.com\n 
 For more information and for updates visit\n  
 http:\\code.google.com\p\eepee\n"""
-_version = "0.7.0"
+_version = "0.8.0"
 _author = "Raja Selvaraj"
 
 
@@ -349,6 +349,7 @@ class MainWindow(wx.Window):
                     if self.calipertomove == 3:
                         self.leftcaliperoffset = pos.x - self.leftcaliper.x1
                         self.rightcaliperoffset = pos.x - self.rightcaliper.x1
+                        print self.leftcaliperoffset, self.rightcaliperoffset
                 
         elif self.zoomselected:
             pass
@@ -427,12 +428,12 @@ class MainWindow(wx.Window):
                 self.horizbar.RemoveCaliper(dc)
                 
                 self.leftcaliper.GetPosition(pos,0)
-                self.leftcaliper.x1 += self.leftcaliperoffset
-                self.leftcaliper.x2 += self.leftcaliperoffset
+                self.leftcaliper.x1 -= self.leftcaliperoffset
+                self.leftcaliper.x2 -= self.leftcaliperoffset
                 
                 self.rightcaliper.GetPosition(pos,0)
-                self.rightcaliper.x1 += self.rightcaliperoffset
-                self.rightcaliper.x2 += self.rightcaliperoffset
+                self.rightcaliper.x1 -= self.rightcaliperoffset
+                self.rightcaliper.x2 -= self.rightcaliperoffset
                 
                 self.horizbar.GetPosition(pos,self.leftcaliper.x1)
                 self.horizbar.x1 = self.rightcaliper.x1 # and not pos.x
