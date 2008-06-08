@@ -22,15 +22,16 @@ Image._initialized = 2
 
 ## ------------------------------------------
 _title          = "EP viewer"
-_about          = """ 
+_about          = """
+Eepee v 0.8
 An application to view, analyze and present EP tracings\n   
 Author: Raja S. \n 
-rajajs@gmail.com\n 
+rajajs@gmail.com\n
+License: GPL
 For more information and for updates visit\n  
 http:\\code.google.com\p\eepee\n"""
 _version = "0.8.0"
 _author = "Raja Selvaraj"
-
 
 #------------------------------------------------------------------------------
 class NotePad(wx.Panel):
@@ -248,6 +249,9 @@ class MainWindow(wx.Window):
                         wx.CURSOR_SIZEWE, wx.CURSOR_HAND]
         #self.bmp = None
         self.measurement = Measurement(self,-1)
+        self.writeposx_old = 0
+        self.writeposy_old = 0
+        self.display_old = ''
         
                 
     def OnKeyUp(self,event):
@@ -349,7 +353,6 @@ class MainWindow(wx.Window):
                     if self.calipertomove == 3:
                         self.leftcaliperoffset = pos.x - self.leftcaliper.x1
                         self.rightcaliperoffset = pos.x - self.rightcaliper.x1
-                        print self.leftcaliperoffset, self.rightcaliperoffset
                 
         elif self.zoomselected:
             pass
@@ -369,9 +372,24 @@ class MainWindow(wx.Window):
             return None
                         
     def MeasureandDisplay(self):
+        dc = wx.ClientDC(self)
+        dc.SetLogicalFunction(wx.XOR)
+        dc.SetPen(wx.Pen(wx.Colour(0,0,0), 1, wx.SOLID))
+        
         self.measurement.MeasureDistance(self.leftcaliper.x1,
                                          self.rightcaliper.x1)
         self.frame.SetStatusText(self.measurement.measurementdisplay,3)
+
+        #writeposx = (self.leftcaliper.x1 + self.rightcaliper.x1)//2
+        #writeposy = self.horizbar.y1 - 15
+        #dc.DrawText(self.display_old,
+        #            self.writeposx_old,self.writeposy_old)
+        #dc.DrawText(self.measurement.measurementdisplay,writeposx,writeposy)
+        #print writeposx, writeposy, '   ', self.writeposx_old, self.writeposy_old
+        #self.writeposx_old = writeposx
+        #self.writeposy_old = writeposy
+        #self.display_old = self.measurement.measurementdisplay
+        
     
     def OnMotion(self, event):
         
