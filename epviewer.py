@@ -20,6 +20,8 @@ import GifImagePlugin
 import JpegImagePlugin
 Image._initialized = 2
 
+
+USE_BUFFERED_DC = True
 ## ------------------------------------------
 _title          = "EP viewer"
 _about          = """
@@ -34,6 +36,28 @@ _version = "0.8.0"
 _author = "Raja Selvaraj"
 
 #------------------------------------------------------------------------------
+class Notepad2(wx.Dialog):
+    """Notepad as a dialog window"""
+    def __init__(self, parent, id, title):
+        wx.Dialog.__init__(self, parent, id, title,
+                           size=(200,300))
+        panel = wx.Panel(self,-1)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        
+        self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
+        vbox.Add(self.pad)
+        
+        self.SetSizer(vbox)
+        #wx.EVT_MENU(self, ID_EXIT, self.OnClose)
+        
+        self.Show(True)
+        
+    def OnClose(self, event):
+        """Hide the window on close"""
+        print "Closing dialog"
+        self.Show(False)
+        
+        
 class NotePad(wx.Panel):
     """ Notepad to write and display notes"""
     def __init__(self, parent):
@@ -169,7 +193,8 @@ class Caliper():
         
     def RemoveCaliper(self,dc):
         self.DrawCaliper(dc,self.prev_x1,self.prev_x2,self.prev_y1,self.prev_y2)
-
+    
+        
 #--------------------------------------------------------------------------
 class PlayList():
     """The list of image / slide files to show"""
@@ -237,7 +262,9 @@ class MainWindow(wx.Window):
         self.Bind(wx.EVT_KEY_UP, self.OnKeyUp) # generates only one event per key press
         self.SetFocus() # need this to get the key events
         
-        wx.EVT_PAINT(self, self.OnPaint)
+        #wx.EVT_PAINT(self, self.OnPaint)
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        #self.Bind(wx.EVT_SIZE, self.OnSize)
         
         self.calipersonscreen = 0
         self.caliperselectedtomove = 0
@@ -253,6 +280,12 @@ class MainWindow(wx.Window):
         self.writeposy_old = 0
         self.display_old = ''
         
+        self.leftcaliper = None
+        self.rightcaliper = None
+        self.horizbar = None
+        
+        self.stampedcalipers = [] #list of stamped calipers
+        #self.OnSize(None)
                 
     def OnKeyUp(self,event):
         keycode = event.GetKeyCode()
@@ -286,8 +319,12 @@ class MainWindow(wx.Window):
         elif keycode == 27: # 'Esc' = exit fullscreen
             self.frame.ShowFullScreen(False)
         
+        elif keycode == 87: # 'w' = write notes
+            self.frame.WriteNotes()
+
         else:
             print event.GetKeyCode() #TODO : only for testing !
+    
     
     def OnLeftClick(self,event):
         pos = event.GetPosition()
@@ -475,6 +512,10 @@ class MainWindow(wx.Window):
         self.calibrateselected = 0
         self.calipersonscreen = 0
         self.frame.SetStatusText('',3)
+        
+        self.leftcaliper = None
+        self.rightcaliper = None
+        self.horizbar = None
     
     def OnRightClick(self,event):
         if self.caliperselected:
@@ -487,6 +528,17 @@ class MainWindow(wx.Window):
         """
         dc = wx.ClientDC(self)
         
+        #store the caliper positions
+        # to redraw on repaint
+        self.stampedcalipers.append((
+            self.leftcaliper.x1, self.leftcaliper.x2,
+            self.leftcaliper.y1, self.leftcaliper.y2,
+            self.rightcaliper.x1, self.rightcaliper.x2,
+            self.rightcaliper.y1, self.rightcaliper.y2,
+            self.horizbar.x1, self.horizbar.x2,
+            self.horizbar.y1, self.horizbar.y2))
+        
+         
         # first draw over the calipers to remove them
         self.leftcaliper.PutCaliper(dc)
         self.rightcaliper.PutCaliper(dc)
@@ -509,6 +561,10 @@ class MainWindow(wx.Window):
         self.calibrateselected = 0
         self.calipersonscreen = 0
         self.frame.SetStatusText('',3)
+        
+        self.leftcaliper = None
+        self.rightcaliper = None
+        self.horizbar = None
 
     
     def OnDoubleClick(self,event):
@@ -540,15 +596,36 @@ class MainWindow(wx.Window):
         
         else:
             self.caliperselectedtomove = 0        
-              
+
     def OnPaint(self, event):
-        dc = wx.PaintDC(self)
+        dc = wx.ClientDC(self)
         if self.frame.displayimage.bmp <> None:
             memdc = wx.MemoryDC()
             memdc.SelectObject(self.frame.displayimage.bmp)
             dc.Blit(0,0,self.GetSize()[0]-self.frame.sidepanelsize,
                                         self.GetSize()[1],memdc,0,0)
             self.prevpos =wx.Point(0,0)
+        
+        #redraw stamped calipers
+        ## the order for drawline is really (x1,y1,x2,y2),
+        ## but  ihave somehow messed this up everywhere
+        if len(self.stampedcalipers) > 0:
+            for (ax1,ay1,ax2,ay2,bx1,by1,bx2,by2,cx1,cy1,cx2,cy2) in self.stampedcalipers:
+                dc.DrawLine(ax1, ax2, ay1, ay2)
+                dc.DrawLine(bx1, bx2, by1, by2)
+                dc.DrawLine(cx1, cx2, cy1, cy2)
+                
+            writeposx = (ax1 + bx1)/2
+            writeposy = cy1 - 15
+            dc.DrawText(self.measurement.measurementdisplay,writeposx,writeposy)        
+        
+        # redraw current caliper
+        if self.leftcaliper:
+            self.leftcaliper.PutCaliper(dc)
+        if self.rightcaliper:
+            self.rightcaliper.PutCaliper(dc)
+        if self.horizbar:
+            self.horizbar.PutCaliper(dc)
 
 #----------------------------------------------------------------------
 class DisplayImage():
@@ -738,7 +815,11 @@ class MyFrame(wx.Frame):
     def OnClose(self,event):
         self.notepad.SaveNote()
         self.Destroy()
+    
+    def WriteNotes(self):
+        self.notepad2 = Notepad2(self, -1, "Notes")
         
+    
     def CaliperStart(self,event):
         self.window.caliperselected = 1
         
