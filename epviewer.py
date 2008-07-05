@@ -21,7 +21,6 @@ import JpegImagePlugin
 Image._initialized = 2
 
 
-USE_BUFFERED_DC = True
 ## ------------------------------------------
 _title          = "EP viewer"
 _about          = """
@@ -36,25 +35,26 @@ _version = "0.8.0"
 _author = "Raja Selvaraj"
 
 #------------------------------------------------------------------------------
-class Notepad2(wx.Dialog):
-    """Notepad as a dialog window"""
+class Notepad2(wx.Frame):
+    """Notepad as a separate window"""
     def __init__(self, parent, id, title):
-        wx.Dialog.__init__(self, parent, id, title,
+        wx.Frame.__init__(self, parent, id, title,
                            size=(200,300))
         panel = wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
         
         self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
-        vbox.Add(self.pad)
-        
+        vbox.Add(self.pad, 1, wx.ALL|wx.EXPAND,5)
+                
         self.SetSizer(vbox)
+        wx.EVT_CLOSE(self, self.OnClose)
         #wx.EVT_MENU(self, ID_EXIT, self.OnClose)
         
+    def ShowNotepad(self, event):
         self.Show(True)
         
     def OnClose(self, event):
         """Hide the window on close"""
-        print "Closing dialog"
         self.Show(False)
         
         
@@ -780,6 +780,7 @@ class MyFrame(wx.Frame):
         
         ## notepad
         self.notepad = NotePad(nb)
+        self.notepad2 = Notepad2(self, -1, "Notes")
                        
         nb.AddPage(self.window, "Tracing")
         nb.AddPage(self.notepad, "Notes")
@@ -817,7 +818,8 @@ class MyFrame(wx.Frame):
         self.Destroy()
     
     def WriteNotes(self):
-        self.notepad2 = Notepad2(self, -1, "Notes")
+        #self.notepad2 = Notepad2(self, -1, "Notes")
+        self.notepad2.ShowNotepad(None)
         
     
     def CaliperStart(self,event):
