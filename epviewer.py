@@ -10,6 +10,11 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 from slide import Slide
 
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 ## Import Image plugins separately and then convince Image that is
 ## fully initialized - needed when compiling for windows, otherwise
 ## I am not able to open tiff files with the windows binaries
@@ -39,7 +44,7 @@ class Notepad2(wx.Frame):
     """Notepad as a separate window"""
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, id, title,
-                           size=(200,300))
+                           size=(400,600))
         panel = wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
         
@@ -56,8 +61,15 @@ class Notepad2(wx.Frame):
     def OnClose(self, event):
         """Hide the window on close"""
         self.Show(False)
+    
+    def FillNote(self, note):
+        self.pad.SetValue(note)
+    
+    # TODO:
+    def GetNote(self):
+        return self.pad.GetValue()
         
-        
+##########################################################################        
 class NotePad(wx.Panel):
     """ Notepad to write and display notes"""
     def __init__(self, parent):
@@ -244,17 +256,61 @@ class Measurement():
             self.measurement *= self.calibration
         self.measurementdisplay = ' '.join((str(int(self.measurement)),self.units))
 
+
+class Doodle():
+    """Doodle on the image window"""
+    def __init__(self, parent):
+        #self.dc = wx.ClientDC(parent)
+        self.lines = [] #list of doodle coords
+        self.pen =wx.Pen(wx.Colour(255, 0, 0), 2, wx.SOLID)
+        self.window = parent
+        # test
+        #self.dc.DrawLine(0,0,100,100)
+        
+    def redrawlines(self, dc):
+        """Redraw the lines in event of repaint"""
+        dc.SetPen(self.pen)
+        for line in self.lines: # line is a list of tuples
+            for coords in line:
+                dc.DrawLine(*coords)
+                
+    def Onleftdown(self, event):
+        """Start a new line on left click"""
+        self.current_line = []
+        self.pos = event.GetPosition()
+        
+    def Onmotion(self, event, dc):
+        """Draw the line"""
+        if event.Dragging() and event.LeftIsDown():
+            dc.BeginDrawing()
+            dc.SetPen(self.pen)
+            pos = event.GetPosition()
+            coords = (self.pos.x, self.pos.y, pos.x, pos.y)
+            self.current_line.append(coords)
+            dc.DrawLine(*coords)
+            self.pos = pos
+            dc.EndDrawing()
+    
+    def Onleftup(self, event):
+        """End current line"""
+        self.lines.append(self.current_line)
+            
+    def Clear(self, event):
+        self.lines = []
+        self.window.OnPaint(event)
+            
 #-----------------------------------------------------------------------
 #The custom window
 class MainWindow(wx.Window):
     
     def __init__(self, parent, ID):
-        wx.Window.__init__(self, parent, ID)
+        wx.Window.__init__(self, parent, ID, style=wx.SUNKEN_BORDER)
         self.frame = wx.GetTopLevelParent(self) #top level parent to set statustext
         
         # Bind mouse events
         self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_LEFT_DOWN,self.OnLeftClick)
+        self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
         self.Bind(wx.EVT_LEFT_DCLICK,self.OnDoubleClick)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick)
         
@@ -272,6 +328,8 @@ class MainWindow(wx.Window):
         self.caliperselected = 0
         self.calibrateselected = 0
         self.zoomselected = 0
+        self.doodleselected = 0        
+        
         self.cursors = [wx.CURSOR_ARROW, wx.CURSOR_SIZEWE,
                         wx.CURSOR_SIZEWE, wx.CURSOR_HAND]
         #self.bmp = None
@@ -284,7 +342,9 @@ class MainWindow(wx.Window):
         self.rightcaliper = None
         self.horizbar = None
         
+        self.doodle = Doodle(self)
         self.stampedcalipers = [] #list of stamped calipers
+        
         #self.OnSize(None)
                 
     def OnKeyUp(self,event):
@@ -319,12 +379,23 @@ class MainWindow(wx.Window):
         elif keycode == 27: # 'Esc' = exit fullscreen
             self.frame.ShowFullScreen(False)
         
-        elif keycode == 87: # 'w' = write notes
+        elif keycode == 78: # 'n' = notes
             self.frame.WriteNotes()
+            
+        elif keycode == 68: # 'd' = doodle
+            self.start_doodle(None)
 
         else:
             print event.GetKeyCode() #TODO : only for testing !
     
+    
+    def start_doodle(self, event):
+        # toggle state of doodle selected
+        if self.doodleselected == False:
+            self.caliperselected = False
+            self.calibrateselected = False
+            self.doodleselected = True
+        print self.doodleselected
     
     def OnLeftClick(self,event):
         pos = event.GetPosition()
@@ -390,9 +461,16 @@ class MainWindow(wx.Window):
                     if self.calipertomove == 3:
                         self.leftcaliperoffset = pos.x - self.leftcaliper.x1
                         self.rightcaliperoffset = pos.x - self.rightcaliper.x1
-                
+        
+        # ready to select zoomframe    
         elif self.zoomselected:
             pass
+        
+        # ready to doodle -
+        # TODO: have to send mouse events as a whole to class
+        elif self.doodleselected:
+            self.doodle.Onleftdown(event)
+        
     
     def GetUserEntry(self,message):
         """Get entry from user for calibration.
@@ -429,45 +507,20 @@ class MainWindow(wx.Window):
         
     
     def OnMotion(self, event):
-        
         dc = wx.ClientDC(self)
-        pos = event.GetPosition()
         
-        # still positioning left caliper        
-        if self.calipersonscreen == 1:
-            self.leftcaliper.RemoveCaliper(dc)
-            self.leftcaliper.GetPosition(pos,0)
-            self.leftcaliper.PutCaliper(dc)
-        
-        # positioning right caliper
-        elif self.calipersonscreen == 2:
-            self.rightcaliper.RemoveCaliper(dc)
-            self.rightcaliper.GetPosition(pos,0)
-            self.rightcaliper.PutCaliper(dc)
-            self.horizbar.RemoveCaliper(dc)
-            self.horizbar.GetPosition(pos,self.leftcaliper.x1)
-            self.horizbar.PutCaliper(dc)
-            self.MeasureandDisplay()
-                        
-        # Now calipersonscreen = 3
-        elif self.calipersonscreen ==3:
-            # change cursor according to location
-            if self.calipertomove == 0:
-                self.FindCalipertoMove(pos)
-                #set cursor accordingly
-                self.SetCursor(wx.StockCursor(self.cursors[self.caliperselectedtomove]))
-            # reposition left caliper
-            elif self.calipertomove == 1:
+        if self.caliperselected:
+            
+            pos = event.GetPosition()
+            
+            # still positioning left caliper        
+            if self.calipersonscreen == 1:
                 self.leftcaliper.RemoveCaliper(dc)
                 self.leftcaliper.GetPosition(pos,0)
                 self.leftcaliper.PutCaliper(dc)
-                self.horizbar.RemoveCaliper(dc)
-                self.horizbar.GetPosition(pos,self.rightcaliper.x1)
-                self.horizbar.PutCaliper(dc)
-                self.MeasureandDisplay()
             
-            # reposition right caliper
-            elif self.calipertomove == 2:
+            # positioning right caliper
+            elif self.calipersonscreen == 2:
                 self.rightcaliper.RemoveCaliper(dc)
                 self.rightcaliper.GetPosition(pos,0)
                 self.rightcaliper.PutCaliper(dc)
@@ -475,28 +528,63 @@ class MainWindow(wx.Window):
                 self.horizbar.GetPosition(pos,self.leftcaliper.x1)
                 self.horizbar.PutCaliper(dc)
                 self.MeasureandDisplay()
+                            
+            # Now calipersonscreen = 3
+            elif self.calipersonscreen ==3:
+                # change cursor according to location
+                if self.calipertomove == 0:
+                    self.FindCalipertoMove(pos)
+                    #set cursor accordingly
+                    self.SetCursor(wx.StockCursor(self.cursors[self.caliperselectedtomove]))
+                # reposition left caliper
+                elif self.calipertomove == 1:
+                    self.leftcaliper.RemoveCaliper(dc)
+                    self.leftcaliper.GetPosition(pos,0)
+                    self.leftcaliper.PutCaliper(dc)
+                    self.horizbar.RemoveCaliper(dc)
+                    self.horizbar.GetPosition(pos,self.rightcaliper.x1)
+                    self.horizbar.PutCaliper(dc)
+                    self.MeasureandDisplay()
                 
-            # reposition both calipers
-            elif self.calipertomove == 3:
-                self.leftcaliper.RemoveCaliper(dc)
-                self.rightcaliper.RemoveCaliper(dc)
-                self.horizbar.RemoveCaliper(dc)
-                
-                self.leftcaliper.GetPosition(pos,0)
-                self.leftcaliper.x1 -= self.leftcaliperoffset
-                self.leftcaliper.x2 -= self.leftcaliperoffset
-                
-                self.rightcaliper.GetPosition(pos,0)
-                self.rightcaliper.x1 -= self.rightcaliperoffset
-                self.rightcaliper.x2 -= self.rightcaliperoffset
-                
-                self.horizbar.GetPosition(pos,self.leftcaliper.x1)
-                self.horizbar.x1 = self.rightcaliper.x1 # and not pos.x
-                
-                self.leftcaliper.PutCaliper(dc)
-                self.rightcaliper.PutCaliper(dc)
-                self.horizbar.PutCaliper(dc)
+                # reposition right caliper
+                elif self.calipertomove == 2:
+                    self.rightcaliper.RemoveCaliper(dc)
+                    self.rightcaliper.GetPosition(pos,0)
+                    self.rightcaliper.PutCaliper(dc)
+                    self.horizbar.RemoveCaliper(dc)
+                    self.horizbar.GetPosition(pos,self.leftcaliper.x1)
+                    self.horizbar.PutCaliper(dc)
+                    self.MeasureandDisplay()
+                    
+                # reposition both calipers
+                elif self.calipertomove == 3:
+                    self.leftcaliper.RemoveCaliper(dc)
+                    self.rightcaliper.RemoveCaliper(dc)
+                    self.horizbar.RemoveCaliper(dc)
+                    
+                    self.leftcaliper.GetPosition(pos,0)
+                    self.leftcaliper.x1 -= self.leftcaliperoffset
+                    self.leftcaliper.x2 -= self.leftcaliperoffset
+                    
+                    self.rightcaliper.GetPosition(pos,0)
+                    self.rightcaliper.x1 -= self.rightcaliperoffset
+                    self.rightcaliper.x2 -= self.rightcaliperoffset
+                    
+                    self.horizbar.GetPosition(pos,self.leftcaliper.x1)
+                    self.horizbar.x1 = self.rightcaliper.x1 # and not pos.x
+                    
+                    self.leftcaliper.PutCaliper(dc)
+                    self.rightcaliper.PutCaliper(dc)
+                    self.horizbar.PutCaliper(dc)
             
+        elif self.doodleselected:
+            self.doodle.Onmotion(event, dc)
+                
+    def OnLeftUp(self, event):
+        if self.doodleselected:
+            self.doodle.Onleftup(event)
+    
+    
     def CaliperRemove(self,event=0):
         """
         Remove calipers, reset everything and clear measurement.
@@ -598,7 +686,9 @@ class MainWindow(wx.Window):
             self.caliperselectedtomove = 0        
 
     def OnPaint(self, event):
+               
         dc = wx.ClientDC(self)
+        dc.Clear() # force repaint
         if self.frame.displayimage.bmp <> None:
             memdc = wx.MemoryDC()
             memdc.SelectObject(self.frame.displayimage.bmp)
@@ -616,7 +706,7 @@ class MainWindow(wx.Window):
                 dc.DrawLine(cx1, cx2, cy1, cy2)
                 
             writeposx = (ax1 + bx1)/2
-            writeposy = cy1 - 15
+            writeposy = cy2 - 15
             dc.DrawText(self.measurement.measurementdisplay,writeposx,writeposy)        
         
         # redraw current caliper
@@ -626,6 +716,9 @@ class MainWindow(wx.Window):
             self.rightcaliper.PutCaliper(dc)
         if self.horizbar:
             self.horizbar.PutCaliper(dc)
+            
+        # redraw doodles
+        self.doodle.redrawlines(dc)
 
 #----------------------------------------------------------------------
 class DisplayImage():
@@ -636,10 +729,31 @@ class DisplayImage():
         self.windowheight = 0
         self.parent = parent
         self.bmp = None
-        
+        self.data = None
+                
     def GetImage(self,imagefilepath):
         self.LoadandResizeImage(imagefilepath)
         self.ConvertImagetoBmp()
+        self.parent.GetData(imagefilepath) # loads the data
+        self.ProcessData()
+        
+    def ProcessData(self):
+        """Process the data loaded by Getdata"""
+        if self.data:
+            try:
+                self.note = self.data["note"]
+                self.calibration = self.data["calibration"]
+            except KeyError:
+                pass
+        else:
+            self.note = ''
+            self.calibration = 0
+            
+        if self.calibration != 0:
+            self.parent.window.measurement.calibration = self.calibration
+            self.parent.SetStatusText('Calibrated', 2)
+        else:
+            self.parent.SetStatusText('Not calibrated', 2)
         
     def LoadandResizeImage(self,imagefilepath):
         """Load image with PIL and resize it, preserving aspect ratio"""
@@ -710,7 +824,8 @@ class MyFrame(wx.Frame):
         ID_STAMP    =   wx.NewId();  ID_REMOVE   =   wx.NewId()
         ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
         ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
-        ID_FRAME    =   wx.NewId();  
+        ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
+        ID_CLEAR    =   wx.NewId()
         
         ## STATUSBAR
         # statusbar with 4 fields, first for toolbar status messages,
@@ -755,6 +870,15 @@ class MyFrame(wx.Frame):
         self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'
                                   ,  getBitmap("exit")
                                   , longHelp='Exit the application')
+        self.toolbar.AddSeparator()
+        # TODO: icons for doodle
+        self.toolbar.AddLabelTool(ID_DOODLE   , 'Doodle'
+                                  ,  getBitmap("about")
+                                  , longHelp='Start doodling on the image')
+        self.toolbar.AddLabelTool(ID_CLEAR  , 'Clear'
+                                  ,  getBitmap("about")
+                                  , longHelp='Clear te doodle')
+
         self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_ABOUT   , 'About'
                                   ,  getBitmap("about")
@@ -765,28 +889,30 @@ class MyFrame(wx.Frame):
         ## SPLITTER - contains notebook and list
         self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
         self.splitter.SetMinimumPaneSize(1)
-        self.notebookpanel = wx.Panel(self.splitter,-1)
+        
+        
+        self.imagepanel = wx.Panel(self.splitter,-1)
         self.listbox = wx.ListBox(self.splitter,-1)
         self.listbox.Show(True)
-        self.splitter.SplitVertically(self.notebookpanel,self.listbox)
+        self.splitter.SplitVertically(self.imagepanel,self.listbox)
         self.splitter.Unsplit() #I dont know the size yet
         
         ## NOTEBOOK - contains main window and notepad
-        nb = wx.Notebook(self.notebookpanel)
+        #nb = wx.Notebook(self.imagepanel)
         
         ## Main window
-        self.window = MainWindow(nb,-1)
-        self.displayimage = DisplayImage(self)
+        self.window = MainWindow(self.imagepanel,-1)
+        self.displayimage = DisplayImage(self) 
         
         ## notepad
-        self.notepad = NotePad(nb)
+        #self.notepad = NotePad(nb)
         self.notepad2 = Notepad2(self, -1, "Notes")
                        
-        nb.AddPage(self.window, "Tracing")
-        nb.AddPage(self.notepad, "Notes")
+        #nb.AddPage(self.window, "Tracing")
+        #nb.AddPage(self.notepad, "Notes")
         sizer = wx.BoxSizer()
-        sizer.Add(nb, 1, wx.EXPAND)
-        self.notebookpanel.SetSizer(sizer)        
+        sizer.Add(self.window, 1, wx.ALL|wx.EXPAND, 10)
+        self.imagepanel.SetSizer(sizer)        
         
         ## Bindings
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
@@ -798,13 +924,16 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_PREV, self.SelectPrevImage)
         wx.EVT_MENU(self,  ID_NEXT, self.SelectNextImage)
         wx.EVT_MENU(self,  ID_SAVE,   self.displayimage.SaveImage)
+        wx.EVT_MENU(self,  ID_DOODLE,   self.window.start_doodle)
+        wx.EVT_MENU(self,  ID_CLEAR,   self.window.doodle.Clear)
         wx.EVT_CLOSE(self, self.OnClose)
+        
+        wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
         
         ## variables
         self.rootdir = '/data'  # TODO: This is only for testing
         self.sidepanelsize = 40
-        #self.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
-        
+                
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
@@ -814,13 +943,11 @@ class MyFrame(wx.Frame):
         self.Alert("About",_about)
   
     def OnClose(self,event):
-        self.notepad.SaveNote()
+        self.CleanUp()
         self.Destroy()
     
     def WriteNotes(self):
-        #self.notepad2 = Notepad2(self, -1, "Notes")
         self.notepad2.ShowNotepad(None)
-        
     
     def CaliperStart(self,event):
         self.window.caliperselected = 1
@@ -830,7 +957,7 @@ class MyFrame(wx.Frame):
         self.window.calibrateselected = 1
 
     def DisplayPlayList(self):
-        self.splitter.SplitVertically(self.notebookpanel,self.listbox)
+        self.splitter.SplitVertically(self.imagepanel,self.listbox)
         self.splitter.SetSashPosition(self.width-self.sidepanelsize, True)
 
         self.listbox.Clear()
@@ -840,6 +967,7 @@ class MyFrame(wx.Frame):
         self.listbox.SetSelection(self.playlist.nowshowing)
 
     def SelectNextImage(self,event):
+        self.CleanUp()
         self.playlist.nowshowing += 1
         if self.playlist.nowshowing == len(self.playlist.playlist):
             self.playlist.nowshowing = 0
@@ -848,9 +976,11 @@ class MyFrame(wx.Frame):
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
         self.BlitSelectedImage()
         
-        self.notepad.FillNote(self.playlist.playlist[self.playlist.nowshowing])
+        # TODO:
+        #self.notepad2.FillNote(self.playlist.playlist[self.playlist.nowshowing])
 
     def SelectPrevImage(self,event):
+        self.CleanUp()
         self.playlist.nowshowing -= 1
         if self.playlist.nowshowing == -1:
             self.playlist.nowshowing = len(self.playlist.playlist)-1
@@ -859,7 +989,77 @@ class MyFrame(wx.Frame):
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
         self.BlitSelectedImage()
         
-        self.notepad.FillNote(self.playlist.playlist[self.playlist.nowshowing])
+        #self.notepad2.FillNote()
+        
+    def JumptoImage(self,event):
+        """On double clicking in listbox select that image"""
+        self.CleanUp()
+        self.playlist.nowshowing = self.listbox.GetSelection()
+        self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
+        self.BlitSelectedImage()
+        #self.notepad2.FillNote()
+        
+    def CleanUp(self):
+        """Clean up prev when choosing a new image.
+        Reinitialize variables and save things"""
+        if self.displayimage.bmp == None: # this is first image
+            pass
+        
+        else:
+            self.SaveData()
+            
+            # TODO: A common variable initialization routine
+            self.window.caliperselected = 0
+            self.window.calipersonscreen = 0
+            self.window.caliperselectedtomove = 0
+            self.window.calibrateselected = 0
+            self.window.zoomselected = 0
+            self.window.doodleselected = 0
+            self.leftcaliper = None
+            self.rightcaliper = None
+            self.horizbar = None
+            self.window.doodle.lines = []
+            self.window.stampedcalipers = []
+            self.window.measurement.calibration = 0
+            self.displayimage.data
+            
+    def SaveData(self):
+        note = self.notepad2.GetNote()
+        calibration = self.window.measurement.calibration
+        
+        # save only if there is data
+        if True in [note != '', calibration != 0]:
+            datadict = {"note" : note,
+                        "calibration" : calibration}
+            
+            imagefile = self.playlist.playlist[self.playlist.nowshowing]
+           
+            # save as hidden file
+            if os.name == 'posix':
+                pklfile = os.path.dirname(imagefile) + "/." + \
+                          os.path.splitext(os.path.basename(imagefile))[0] +\
+                          ".pkl"
+                pickle.dump(datadict, open(pklfile, 'w'))
+            
+            elif os.name == 'nt':
+                pklfile = os.path.splitext(imagefile)[0] + ".pkl"
+                pickle.dump(datadict, open(pklfile, 'w'))
+                status = commands.getstatus("attrib +h %s" %(pklfile))
+                if status != 0:
+                    pass
+                    #TODO: raise error
+
+    def GetData(self, imagefile):
+        """Read stored data if present"""
+        if os.name == 'posix':
+            pklfile = os.path.dirname(imagefile) + "/." + \
+                          os.path.splitext(os.path.basename(imagefile))[0] +\
+                          ".pkl"
+        elif os.name == 'nt':
+            pklfile = os.path.splitext(imagefile)[0] + ".pkl"
+        
+        if os.path.exists(pklfile):
+                self.displayimage.data = pickle.load(open(pklfile,'r'))  
         
     def SelectandDisplayImage(self,event):
         # TODO: define rootdir
@@ -880,8 +1080,8 @@ class MyFrame(wx.Frame):
         self.displayimage.GetImage(filepath)
         self.DisplayPlayList()
         self.BlitSelectedImage()        
-        self.notepad.FillNote(filepath)
-
+        self.notepad2.FillNote(self.displayimage.note)
+        
     def BlitSelectedImage(self):
         dc = wx.ClientDC(self.window)
         dc.Clear()  #clear old image if still there
