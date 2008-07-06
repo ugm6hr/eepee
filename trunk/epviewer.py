@@ -69,83 +69,6 @@ class Notepad2(wx.Frame):
     def GetNote(self):
         return self.pad.GetValue()
         
-##########################################################################        
-class NotePad(wx.Panel):
-    """ Notepad to write and display notes"""
-    def __init__(self, parent):
-        wx.Panel.__init__(self, parent)
-        self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
-            
-        s = wx.BoxSizer()
-        s.Add(self.pad,1,wx.EXPAND)
-        self.SetSizer(s)
-        
-        self.frame = wx.GetTopLevelParent(self)
-        self.notes = ''
-        self.frame.frameextent = (0,0,0,0)
-        self.frame.window.measurement.calibration = 0 
-        self.frame.SetStatusText("Not Calibrated",2)
-        
-    def FillNote(self,imagefilename):
-        """
-        Fill the notebook at beginning with previously stored notes if they 
-        have been stored
-        """
-        (w,h) = self.GetSize()# because GetSize doesnt work in init
-        self.pad.SetSize((w*0.6, h*0.9)) 
-        self.pad.SetPosition((w*0.2, h*0.05)) # nicely centered potrait page
-        self.notefile = os.path.splitext(imagefilename)[0] + '.note'
-        
-        self.pad.Clear()
-        if os.path.exists(self.notefile):
-            self.parseNote()
-            self.pad.write(self.notes)
-                    
-    def SaveNote(self):
-        """Save the note to the file with same name as image with suffix 'note'"""
-        self.notes = self.pad.GetValue()
-
-        # if no changes to save, dont write a note
-        if self.notes == '' and \
-           self.frame.window.measurement.calibration == 0 and \
-           self.frame.frameextent == (0,0,0,0):
-               return
-            
-        # else save   
-        fi = open(self.notefile,'w')
-        fi.write('Calibration:%s\n' % (self.frame.window.measurement.calibration)) 
-        fi.write('Zoomframe:%s,%s,%s,%s\n' % self.frame.frameextent)
-                                              
-        fi.write(self.notes)
-        fi.close()
-        
-    def parseNote(self): 
-        """
-        Parse the stored note and extract the information. Notes can be a 
-        multi-line entry and will be stored at the end of the file.
-        Single line entries come before. All have a header of the form 
-        'somestring:' followed by the data itself. Empty lines are not allowed 
-        except at the end.        
-        """
-        
-        lines_to_parse = open(self.notefile,'r').readlines()
-        linecount = 0
-        
-        try:
-            self.frame.window.measurement.calibration = float(
-                                      lines_to_parse[0].lstrip('Calibration:'))
-            self.parentframe.frameextent = tuple(
-                                [int(x) for x in 
-                                lines_to_parse[1].lstrip('Zoomframe:').split(',')])
-            self.notes = ''.join(lines_to_parse[2:])
-            
-        #If cannot parse, dump the whole thing on the pad
-        except:
-            self.notes = ''.join(lines_to_parse[:])
-        
-        if self.frame.window.measurement.calibration != 0:
-            self.frame.window.measurement.units = 'ms'
-            self.frame.SetStatusText("Calibrated",2)
 
 #-------------------------------------------------------------------------------
 class Caliper():
@@ -260,12 +183,9 @@ class Measurement():
 class Doodle():
     """Doodle on the image window"""
     def __init__(self, parent):
-        #self.dc = wx.ClientDC(parent)
         self.lines = [] #list of doodle coords
         self.pen =wx.Pen(wx.Colour(255, 0, 0), 2, wx.SOLID)
         self.window = parent
-        # test
-        #self.dc.DrawLine(0,0,100,100)
         
     def redrawlines(self, dc):
         """Redraw the lines in event of repaint"""
@@ -318,9 +238,7 @@ class MainWindow(wx.Window):
         self.Bind(wx.EVT_KEY_UP, self.OnKeyUp) # generates only one event per key press
         self.SetFocus() # need this to get the key events
         
-        #wx.EVT_PAINT(self, self.OnPaint)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        #self.Bind(wx.EVT_SIZE, self.OnSize)
         
         self.calipersonscreen = 0
         self.caliperselectedtomove = 0
@@ -332,7 +250,7 @@ class MainWindow(wx.Window):
         
         self.cursors = [wx.CURSOR_ARROW, wx.CURSOR_SIZEWE,
                         wx.CURSOR_SIZEWE, wx.CURSOR_HAND]
-        #self.bmp = None
+
         self.measurement = Measurement(self,-1)
         self.writeposx_old = 0
         self.writeposy_old = 0
@@ -344,10 +262,9 @@ class MainWindow(wx.Window):
         
         self.doodle = Doodle(self)
         self.stampedcalipers = [] #list of stamped calipers
-        
-        #self.OnSize(None)
                 
     def OnKeyUp(self,event):
+        
         keycode = event.GetKeyCode()
         
         if keycode == 79: # 'o' = open
@@ -395,7 +312,9 @@ class MainWindow(wx.Window):
             self.caliperselected = False
             self.calibrateselected = False
             self.doodleselected = True
-        print self.doodleselected
+        
+        else:
+            self.doodleselected = False
     
     def OnLeftClick(self,event):
         pos = event.GetPosition()
@@ -471,7 +390,6 @@ class MainWindow(wx.Window):
         elif self.doodleselected:
             self.doodle.Onleftdown(event)
         
-    
     def GetUserEntry(self,message):
         """Get entry from user for calibration.
         Entry must be a positive integer"""
@@ -480,7 +398,6 @@ class MainWindow(wx.Window):
                                    message,"Calibrate")
         if dialog.ShowModal() == wx.ID_OK:
             calibration = dialog.GetValue()
-            #calibration = int(calib)/self.measurement.measurement
             dialog.Destroy() 
             return calibration
         else: # On cancel
@@ -494,17 +411,6 @@ class MainWindow(wx.Window):
         self.measurement.MeasureDistance(self.leftcaliper.x1,
                                          self.rightcaliper.x1)
         self.frame.SetStatusText(self.measurement.measurementdisplay,3)
-
-        #writeposx = (self.leftcaliper.x1 + self.rightcaliper.x1)//2
-        #writeposy = self.horizbar.y1 - 15
-        #dc.DrawText(self.display_old,
-        #            self.writeposx_old,self.writeposy_old)
-        #dc.DrawText(self.measurement.measurementdisplay,writeposx,writeposy)
-        #print writeposx, writeposy, '   ', self.writeposx_old, self.writeposy_old
-        #self.writeposx_old = writeposx
-        #self.writeposy_old = writeposy
-        #self.display_old = self.measurement.measurementdisplay
-        
     
     def OnMotion(self, event):
         dc = wx.ClientDC(self)
@@ -679,8 +585,6 @@ class MainWindow(wx.Window):
            
         elif betweencalipers and onhorizbar:
             self.caliperselectedtomove = 3
-            #self.leftcaliperoffset = pos.x - self.leftcaliper.x1
-            #self.rightcaliperoffset = pos.x - self.rightcaliper.x1
         
         else:
             self.caliperselectedtomove = 0        
@@ -724,7 +628,6 @@ class MainWindow(wx.Window):
 class DisplayImage():
     
     def __init__(self,parent):
-        #self.filepath = ''
         self.windowwidth = 0
         self.windowheight = 0
         self.parent = parent
@@ -897,19 +800,12 @@ class MyFrame(wx.Frame):
         self.splitter.SplitVertically(self.imagepanel,self.listbox)
         self.splitter.Unsplit() #I dont know the size yet
         
-        ## NOTEBOOK - contains main window and notepad
-        #nb = wx.Notebook(self.imagepanel)
-        
         ## Main window
         self.window = MainWindow(self.imagepanel,-1)
         self.displayimage = DisplayImage(self) 
         
         ## notepad
-        #self.notepad = NotePad(nb)
         self.notepad2 = Notepad2(self, -1, "Notes")
-                       
-        #nb.AddPage(self.window, "Tracing")
-        #nb.AddPage(self.notepad, "Notes")
         sizer = wx.BoxSizer()
         sizer.Add(self.window, 1, wx.ALL|wx.EXPAND, 10)
         self.imagepanel.SetSizer(sizer)        
@@ -975,9 +871,6 @@ class MyFrame(wx.Frame):
             
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
         self.BlitSelectedImage()
-        
-        # TODO:
-        #self.notepad2.FillNote(self.playlist.playlist[self.playlist.nowshowing])
 
     def SelectPrevImage(self,event):
         self.CleanUp()
@@ -988,16 +881,15 @@ class MyFrame(wx.Frame):
             
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
         self.BlitSelectedImage()
-        
-        #self.notepad2.FillNote()
-        
+       
     def JumptoImage(self,event):
         """On double clicking in listbox select that image"""
         self.CleanUp()
         self.playlist.nowshowing = self.listbox.GetSelection()
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
         self.BlitSelectedImage()
-        #self.notepad2.FillNote()
+        ## have to set focus back to window to catch keypresse
+        self.window.SetFocus()
         
     def CleanUp(self):
         """Clean up prev when choosing a new image.
