@@ -96,11 +96,17 @@ class Caliper():
         """
         Update position for caliper from position of event.
         x2 is 0 if the line is a vertical bar.
+        x2 is -1 for first caliper when we dont have an event position
         for a horiz line, x2 is the x coord for the 'other' caliper
         (eg. left when the horiz bar goes with the right caliper). 
         """
         if x2 == 0:
             self.x1 = self.x2 = pos.x
+            self.y1 = 0
+            self.y2 = self.height
+        elif x2 == -1:
+            self.x1 = 0
+            self.x2 = 0
             self.y1 = 0
             self.y2 = self.height
         else:
@@ -279,10 +285,12 @@ class MainWindow(wx.Window):
         
         elif keycode == 67: #'c'= caliperstart
             self.caliperselected = 1
+            self.StartLeftcaliper()
         
         elif keycode == 66: #'b' = calibratestart
             self.caliperselected = 1
             self.calibrateselected = 1
+            self.StartLeftcaliper()
           
         elif keycode == 82: #'r'= caliperremove
             self.CaliperRemove()
@@ -317,6 +325,14 @@ class MainWindow(wx.Window):
         else:
             self.doodleselected = False
     
+    def StartLeftcaliper(self):
+        """Start left caliper when calipers are started"""
+        dc = wx.ClientDC(self)
+        self.leftcaliper = Caliper(self)
+        self.leftcaliper.GetPosition(0,-1) # with second arg as -1, first is dummy
+        self.leftcaliper.PutCaliper(dc)
+        self.calipersonscreen = 1
+    
     def OnLeftClick(self,event):
         pos = event.GetPosition()
         dc = wx.ClientDC(self)
@@ -325,7 +341,7 @@ class MainWindow(wx.Window):
         if self.caliperselected:
             # There are no calipers.
             # Start left caliper, initialize pos
-            if self.calipersonscreen == 0:
+            if self.calipersonscreen == 0: # TODO : this condition will never be true now
                 self.leftcaliper = Caliper(self)
                 self.leftcaliper.GetPosition(pos,0)
                 self.leftcaliper.PutCaliper(dc)
@@ -850,10 +866,12 @@ class MyFrame(wx.Frame):
     
     def CaliperStart(self,event):
         self.window.caliperselected = 1
+        self.window.StartLeftcaliper()
         
     def Calibrate(self,event):
         self.window.caliperselected = 1
         self.window.calibrateselected = 1
+        self.window.StartLeftcaliper()
 
     def DisplayPlayList(self):
         self.splitter.SplitVertically(self.imagepanel,self.listbox)
@@ -866,20 +884,15 @@ class MyFrame(wx.Frame):
         self.listbox.SetSelection(self.playlist.nowshowing)
 
     def SelectNextImage(self,event):
-        print ''
-        print 'as we start next selection ', self.window.measurement.calibration
         self.CleanUp()
-        print 'after cleanup ', self.window.measurement.calibration
         self.playlist.nowshowing += 1
         if self.playlist.nowshowing == len(self.playlist.playlist):
             self.playlist.nowshowing = 0
         self.listbox.SetSelection(self.playlist.nowshowing)
             
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
-        print 'after getimage ', self.window.measurement.calibration
         self.BlitSelectedImage()
-        print 'after blit ', self.window.measurement.calibration
-
+        
     def SelectPrevImage(self,event):
         self.CleanUp()
         self.playlist.nowshowing -= 1
