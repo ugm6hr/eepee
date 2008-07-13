@@ -918,6 +918,9 @@ class MyFrame(wx.Frame):
             
     def SaveData(self):
         note = self.notepad2.GetNote()
+        if note == '':
+            note = None
+            
         calibration = self.window.measurement.calibration
         
         # save only if there is data
