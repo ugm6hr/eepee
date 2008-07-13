@@ -63,6 +63,8 @@ class Notepad2(wx.Frame):
         self.Show(False)
     
     def FillNote(self, note):
+        if not note:
+            note = ''
         self.pad.SetValue(note)
     
     def GetNote(self):
@@ -269,10 +271,10 @@ class MainWindow(wx.Window):
         if keycode == 79: # 'o' = open
             self.frame.SelectandDisplayImage(event)
 
-        elif keycode == 366: # '<left arrow>' = prev
+        elif keycode == 366: # '<pg up>' = prev
             self.frame.SelectPrevImage(event)
 
-        elif keycode == 367: # '<right arrow>' = next
+        elif keycode == 367: # 'pg down' = next
             self.frame.SelectNextImage(event)
         
         elif keycode == 67: #'c'= caliperstart
@@ -640,7 +642,7 @@ class DisplayImage():
         self.ConvertImagetoBmp()
         self.parent.GetData(imagefilepath) # loads the data
         self.ProcessData()
-        
+                
     def ProcessData(self):
         """Process the data loaded by Getdata"""
         if self.data:
@@ -648,10 +650,13 @@ class DisplayImage():
             self.note = self.data.get("note")
             self.calibration = self.data.get("calibration")
             
-        if self.calibration:
-            self.parent.window.measurement.calibration = self.calibration
-            self.parent.window.measurement.units = "ms"
-            self.parent.SetStatusText('Calibrated', 2)
+            if self.calibration:
+                self.parent.window.measurement.calibration = self.calibration
+                self.parent.window.measurement.units = "ms"
+                self.parent.SetStatusText('Calibrated', 2)
+            else:
+                self.parent.SetStatusText('Not calibrated', 2)
+                self.parent.window.measurement.units = "pixels"
         else:
             self.parent.SetStatusText('Not calibrated', 2)
             self.parent.window.measurement.units = "pixels"
@@ -861,14 +866,19 @@ class MyFrame(wx.Frame):
         self.listbox.SetSelection(self.playlist.nowshowing)
 
     def SelectNextImage(self,event):
+        print ''
+        print 'as we start next selection ', self.window.measurement.calibration
         self.CleanUp()
+        print 'after cleanup ', self.window.measurement.calibration
         self.playlist.nowshowing += 1
         if self.playlist.nowshowing == len(self.playlist.playlist):
             self.playlist.nowshowing = 0
         self.listbox.SetSelection(self.playlist.nowshowing)
             
         self.displayimage.GetImage(self.playlist.playlist[self.playlist.nowshowing])
+        print 'after getimage ', self.window.measurement.calibration
         self.BlitSelectedImage()
+        print 'after blit ', self.window.measurement.calibration
 
     def SelectPrevImage(self,event):
         self.CleanUp()
@@ -913,8 +923,8 @@ class MyFrame(wx.Frame):
             self.horizbar = None
             self.window.doodle.lines = []
             self.window.stampedcalipers = []
-            self.window.measurement.calibration = 0
-            self.displayimage.data
+            self.window.measurement.calibration = None
+            self.displayimage.data = None
             
     def SaveData(self):
         note = self.notepad2.GetNote()
@@ -924,7 +934,8 @@ class MyFrame(wx.Frame):
         calibration = self.window.measurement.calibration
         
         # save only if there is data
-        if True in [note != '', calibration != 0]:
+        print 'note, calibration ', note, calibration
+        if True in [note != None, calibration != None]:
             datadict = {"note" : note,
                         "calibration" : calibration}
             
@@ -955,16 +966,18 @@ class MyFrame(wx.Frame):
             pklfile = os.path.splitext(imagefile)[0] + ".pkl"
         
         if os.path.exists(pklfile):
-                self.displayimage.data = pickle.load(open(pklfile,'r'))  
+                self.displayimage.data = pickle.load(open(pklfile,'r'))
+        else:
+            self.displayimage.data = None
         
     def SelectandDisplayImage(self,event):
         # TODO: define rootdir
         self.width, self.height = self.window.GetSize()
         self.displayimage.windowwidth, self.displayimage.windowheight = \
                                        self.width, self.height
-        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF;\
-                                     *.jpg;*.JPG;*.jpeg;*.JPEG;\
-                                     *.bmp;*.BMP;*.gif;*.GIF'
+        filters = 'Supported formats|' + '*.png;*.PNG;*.tif;*.TIF;' +\
+                  '*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;' +\
+                  '*.bmp;*.BMP;*.gif;*.GIF'
         dlg = wx.FileDialog(self,self.rootdir,style=wx.OPEN,wildcard=filters)
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
@@ -984,8 +997,9 @@ class MyFrame(wx.Frame):
         memdc = wx.MemoryDC()
         memdc.SelectObject(self.displayimage.bmp)
         dc.Blit(0, 0, self.width-self.sidepanelsize, self.height, memdc, 0, 0)
+        
         self.SetStatusText(os.path.basename(
-                           self.playlist.playlist[self.playlist.nowshowing]), 0)
+                          self.playlist.playlist[self.playlist.nowshowing]), 1)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
