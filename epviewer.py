@@ -310,12 +310,16 @@ class MainWindow(wx.Window):
             
         elif keycode == 68: # 'd' = doodle
             self.start_doodle(None)
+            
+        elif keycode == 88: # 'x' = clear doodle
+            self.doodle.Clear(event)
 
         else:
             print event.GetKeyCode() #TODO : only for testing !
     
     
     def start_doodle(self, event):
+        # TODO: change status of doodle icon
         # toggle state of doodle selected
         if self.doodleselected == False:
             self.caliperselected = False
@@ -676,6 +680,7 @@ class DisplayImage():
         else:
             self.parent.SetStatusText('Not calibrated', 2)
             self.parent.window.measurement.units = "pixels"
+            self.note = None
         
     def LoadandResizeImage(self,imagefilepath):
         """Load image with PIL and resize it, preserving aspect ratio"""
@@ -937,6 +942,7 @@ class MyFrame(wx.Frame):
             self.window.doodle.lines = []
             self.window.stampedcalipers = []
             self.window.measurement.calibration = None
+            
             self.displayimage.data = None
             
     def SaveData(self):
@@ -946,8 +952,8 @@ class MyFrame(wx.Frame):
             
         calibration = self.window.measurement.calibration
         
+        print note, calibration
         # save only if there is data
-        print 'note, calibration ', note, calibration
         if True in [note != None, calibration != None]:
             datadict = {"note" : note,
                         "calibration" : calibration}
@@ -1002,8 +1008,7 @@ class MyFrame(wx.Frame):
         self.displayimage.GetImage(filepath)
         self.DisplayPlayList()
         self.BlitSelectedImage()
-        self.notepad2.FillNote(self.displayimage.note)
-        
+            
     def BlitSelectedImage(self):
         dc = wx.ClientDC(self.window)
         dc.Clear()  #clear old image if still there
@@ -1013,6 +1018,7 @@ class MyFrame(wx.Frame):
         
         self.SetStatusText(os.path.basename(
                           self.playlist.playlist[self.playlist.nowshowing]), 1)
+        self.notepad2.FillNote(self.displayimage.note)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
