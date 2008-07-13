@@ -65,7 +65,6 @@ class Notepad2(wx.Frame):
     def FillNote(self, note):
         self.pad.SetValue(note)
     
-    # TODO:
     def GetNote(self):
         return self.pad.GetValue()
         
@@ -170,12 +169,12 @@ class Measurement():
     def __init__(self,parent,id):
         self.measurement = 0
         self.units = 'pixels'
-        self.calibration = 0
+        self.calibration = None
         self.measurementdisplay = ''
         
     def MeasureDistance(self,leftx,rightx):
         self.measurement = abs(leftx - rightx)
-        if self.calibration > 0:
+        if self.calibration:
             self.measurement *= self.calibration
         self.measurementdisplay = ' '.join((str(int(self.measurement)),self.units))
 
@@ -633,6 +632,8 @@ class DisplayImage():
         self.parent = parent
         self.bmp = None
         self.data = None
+        self.calibration = None
+        self.note = None
                 
     def GetImage(self,imagefilepath):
         self.LoadandResizeImage(imagefilepath)
@@ -643,20 +644,17 @@ class DisplayImage():
     def ProcessData(self):
         """Process the data loaded by Getdata"""
         if self.data:
-            try:
-                self.note = self.data["note"]
-                self.calibration = self.data["calibration"]
-            except KeyError:
-                pass
-        else:
-            self.note = ''
-            self.calibration = 0
+            # will default to none if key does not exist
+            self.note = self.data.get("note")
+            self.calibration = self.data.get("calibration")
             
-        if self.calibration != 0:
+        if self.calibration:
             self.parent.window.measurement.calibration = self.calibration
+            self.parent.window.measurement.units = "ms"
             self.parent.SetStatusText('Calibrated', 2)
         else:
             self.parent.SetStatusText('Not calibrated', 2)
+            self.parent.window.measurement.units = "pixels"
         
     def LoadandResizeImage(self,imagefilepath):
         """Load image with PIL and resize it, preserving aspect ratio"""
@@ -901,6 +899,9 @@ class MyFrame(wx.Frame):
             self.SaveData()
             
             # TODO: A common variable initialization routine
+            for section in range(4):
+                self.SetStatusText('',section)
+                
             self.window.caliperselected = 0
             self.window.calipersonscreen = 0
             self.window.caliperselectedtomove = 0
@@ -958,7 +959,7 @@ class MyFrame(wx.Frame):
         self.width, self.height = self.window.GetSize()
         self.displayimage.windowwidth, self.displayimage.windowheight = \
                                        self.width, self.height
-        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF\
+        filters = 'Supported formats|*.png;*.PNG;*.tif;*.TIF;*.tiff;*.TIFF;\
                                      *.jpg;*.JPG;*.jpeg;*.JPEG;\
                                      *.bmp;*.BMP;*.gif;*.GIF'
         dlg = wx.FileDialog(self,self.rootdir,style=wx.OPEN,wildcard=filters)
@@ -971,7 +972,7 @@ class MyFrame(wx.Frame):
         
         self.displayimage.GetImage(filepath)
         self.DisplayPlayList()
-        self.BlitSelectedImage()        
+        self.BlitSelectedImage()
         self.notepad2.FillNote(self.displayimage.note)
         
     def BlitSelectedImage(self):
@@ -980,6 +981,8 @@ class MyFrame(wx.Frame):
         memdc = wx.MemoryDC()
         memdc.SelectObject(self.displayimage.bmp)
         dc.Blit(0, 0, self.width-self.sidepanelsize, self.height, memdc, 0, 0)
+        self.SetStatusText(os.path.basename(
+                           self.playlist.playlist[self.playlist.nowshowing]), 0)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
