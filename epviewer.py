@@ -752,7 +752,7 @@ class MyFrame(wx.Frame):
         ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
         ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
         ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
-        ID_CLEAR    =   wx.NewId()
+        ID_CLEAR    =   wx.NewId();  ID_NOTE     =   wx.NewId()
         
         ## STATUSBAR
         # statusbar with 4 fields, first for toolbar status messages,
@@ -760,55 +760,85 @@ class MyFrame(wx.Frame):
         # fourth for the measurements
         self.CreateStatusBar(4)
         
+        ## Menubar
+        self.menubar = wx.MenuBar()
+        
+        file = wx.Menu()
+        file.Append(ID_SELECT, 'Open', 'Open a file')
+        file.Append(ID_EXIT, 'Quit', 'Quit application')
+        file.Append(ID_SAVE, 'Save', 'Save image')
+        
+        caliper = wx.Menu()
+        caliper.Append(ID_CALIB, 'Calibrate', 'Calibrate with known measurement')
+        caliper.Append(ID_CALIPER, 'Caliper', 'Start a new caliper')
+        caliper.Append(ID_REMOVE, 'Remove', 'Remove calipers')
+        caliper.Append(ID_STAMP, 'Stamp', 'Print caliper on image')
+        
+        playlist = wx.Menu()
+        playlist.Append(ID_PREV, 'Previous', 'Open previous image in playlist')
+        playlist.Append(ID_NEXT, 'Next', 'Open next image in playlist')
+        
+        note = wx.Menu()
+        note.Append(ID_NOTE, 'Write', 'Write notes')
+        
+        self.menubar.Append(file, "File")
+        self.menubar.Append(caliper, "Caliper")
+        self.menubar.Append(note, 'Note')
+        self.menubar.Append(playlist, "Playlist")
+        self.SetMenuBar(self.menubar)
+        
         ## TOOLBAR
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | 
                                           wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((20,20))
 
-        self.toolbar.AddLabelTool(ID_SELECT  , 'Open', getBitmap("open")
+        self.toolbar.AddLabelTool(ID_SELECT  , 'Open' #getBitmap("open")
+                                             , getBitmap('open')
                                              , longHelp='Open a file')
         self.toolbar.AddSeparator()
         self.toolbar.AddLabelTool(ID_CALIB   , 'Calibrate'
-                                  , getBitmap("calibrate")
+                                  , getBitmap('calibrate')
                                   , longHelp='Calibrate with known measurement')
         self.toolbar.AddLabelTool(ID_CALIPER , 'Caliper'
-                                  ,  getBitmap("calipers")
+                                  , getBitmap('caliper')
                                   , longHelp='Start a new caliper')
         self.toolbar.AddLabelTool(ID_REMOVE  , 'Remove Caliper'
-                                  ,  getBitmap("removecalipers")
+                                  ,  getBitmap('caliper_remove')
                                   , longHelp='Remove the current caliper' )
         self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'
-                                  ,  getBitmap("stampcalipers")
+                                  ,  getBitmap('stamp')
                                   , longHelp='Print the caliper on image')
         self.toolbar.AddSeparator()
         self.toolbar.AddLabelTool(ID_PREV    , 'Previous'
-                                  ,  getBitmap("previous")
+                                  , getBitmap('previous')
                                   , longHelp='Open previous image in playlist')
         self.toolbar.AddLabelTool(ID_NEXT    , 'Next'
-                                  ,  getBitmap("next")
+                                  , getBitmap('next')
                                   , longHelp='Open next image in playlist')
         self.toolbar.AddSeparator()
-        self.toolbar.AddCheckLabelTool(ID_FRAME   , 'Select frame'
-                                       ,  getBitmap("frame")
-                                       , longHelp='Select frame for zoom')
-        self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
-                                 ,  getBitmap("save")
-                                 , longHelp='Save the image with stamped calipers')
-        self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'
-                                  ,  getBitmap("exit")
-                                  , longHelp='Exit the application')
-        self.toolbar.AddSeparator()
+        
         # TODO: icons for doodle
-        self.toolbar.AddLabelTool(ID_DOODLE   , 'Doodle'
-                                  ,  getBitmap("about")
+        self.toolbar.AddCheckLabelTool(ID_NOTE   , 'Note'
+                                  ,  getBitmap('note')
+                                  , longHelp='Start doodling on the image')
+        self.toolbar.AddCheckLabelTool(ID_DOODLE   , 'Doodle'
+                                  ,  getBitmap('doodle')
                                   , longHelp='Start doodling on the image')
         self.toolbar.AddLabelTool(ID_CLEAR  , 'Clear'
-                                  ,  getBitmap("about")
+                                  , getBitmap('clear')
                                   , longHelp='Clear te doodle')
+        self.toolbar.AddSeparator()
+        self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
+                                 ,  getBitmap('save')
+                                 , longHelp='Save the image with stamped calipers')
+        self.toolbar.AddLabelTool(ID_EXIT    , 'Exit'
+                                  , getBitmap("exit")
+                                  , longHelp='Exit the application')
+        
 
         self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_ABOUT   , 'About'
-                                  ,  getBitmap("about")
+                                  ,  wx.Bitmap('icons/about.png')
                                   , longHelp='About Eepee')
         self.toolbar.Realize()
         
@@ -817,11 +847,13 @@ class MyFrame(wx.Frame):
         self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
         self.splitter.SetMinimumPaneSize(1)
         
-        
         self.imagepanel = wx.Panel(self.splitter,-1)
-        self.listbox = wx.ListBox(self.splitter,-1)
+        self.listboxpanel = wx.Panel(self.splitter, -1)
+        
+        self.listbox = wx.ListBox(self.listboxpanel,-1)
         self.listbox.Show(True)
-        self.splitter.SplitVertically(self.imagepanel,self.listbox)
+        
+        self.splitter.SplitVertically(self.imagepanel,self.listboxpanel)
         self.splitter.Unsplit() #I dont know the size yet
         
         ## Main window
@@ -830,9 +862,14 @@ class MyFrame(wx.Frame):
         
         ## notepad
         self.notepad2 = Notepad2(self, -1, "Notes")
-        sizer = wx.BoxSizer()
-        sizer.Add(self.window, 1, wx.ALL|wx.EXPAND, 10)
-        self.imagepanel.SetSizer(sizer)        
+        
+        imagepanelsizer = wx.BoxSizer()
+        imagepanelsizer.Add(self.window, 1, wx.ALL|wx.EXPAND, 10)
+        self.imagepanel.SetSizer(imagepanelsizer)
+        
+        listboxpanelsizer = wx.BoxSizer()
+        listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 5)
+        self.listboxpanel.SetSizer(listboxpanelsizer)
         
         ## Bindings
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
@@ -879,7 +916,7 @@ class MyFrame(wx.Frame):
         self.window.StartLeftcaliper()
 
     def DisplayPlayList(self):
-        self.splitter.SplitVertically(self.imagepanel,self.listbox)
+        self.splitter.SplitVertically(self.imagepanel,self.listboxpanel)
         self.splitter.SetSashPosition(self.width-self.sidepanelsize, True)
 
         self.listbox.Clear()
@@ -951,8 +988,7 @@ class MyFrame(wx.Frame):
             note = None
             
         calibration = self.window.measurement.calibration
-        
-        print note, calibration
+
         # save only if there is data
         if True in [note != None, calibration != None]:
             datadict = {"note" : note,
