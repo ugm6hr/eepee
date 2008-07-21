@@ -374,10 +374,10 @@ class MainWindow(wx.Window):
                         self.CaliperRemove()
                         return
                     
-                    ## handle invalid entry
-                    #while not calibration.isdigit():
-                    #    calibration = (self.GetUserEntry
-                    #                  ("Please enter a positive number"))
+                    # handle invalid entry
+                    while not calibration.isdigit():
+                        calibration = (self.GetUserEntry
+                                      ("Please enter a positive number"))
                     
                     # get calibration
                     self.measurement.calibration = (int(calibration)/
@@ -415,11 +415,12 @@ class MainWindow(wx.Window):
         """Get entry from user for calibration.
         Entry must be a positive integer"""
         calib = 0
-        dialog = wx.NumberEntryDialog(None, message, "Calibrate",
-                                      'Calibration', 1, min=1, max=10000)
+        dialog = wx.TextEntryDialog(None,\
+                                   message,"Calibrate")
         if dialog.ShowModal() == wx.ID_OK:
             calibration = dialog.GetValue()
-            dialog.Destroy() 
+            dialog.Destroy()
+            print 'calibration', calibration
             return calibration
         else: # On cancel
             return None
