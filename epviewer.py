@@ -224,7 +224,7 @@ class Doodle():
             
     def Clear(self, event):
         self.lines = []
-        self.window.OnPaint(event)
+        self.window.Refresh()
             
 #-----------------------------------------------------------------------
 #The custom window
@@ -612,7 +612,7 @@ class MainWindow(wx.Window):
 
     def OnPaint(self, event):
                
-        dc = wx.ClientDC(self)
+        dc = wx.PaintDC(self)
         dc.Clear() # force repaint
         if self.frame.displayimage.bmp <> None:
             memdc = wx.MemoryDC()
@@ -790,7 +790,7 @@ class MyFrame(wx.Frame):
         ## TOOLBAR
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | 
                                           wx.NO_BORDER | wx.TB_FLAT)
-        self.toolbar.SetToolBitmapSize((20,20))
+        self.toolbar.SetToolBitmapSize((22,22))
 
         self.toolbar.AddLabelTool(ID_SELECT  , 'Open' #getBitmap("open")
                                              , getBitmap('open')
@@ -981,6 +981,8 @@ class MyFrame(wx.Frame):
             self.window.measurement.calibration = None
             
             self.displayimage.data = None
+            # TODO: Reset doodle and note on changing images
+            
             
     def SaveData(self):
         note = self.notepad2.GetNote()
