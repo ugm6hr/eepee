@@ -242,7 +242,7 @@ class MainWindow(wx.Window):
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick)
         
         # Bind key input
-        self.Bind(wx.EVT_KEY_UP, self.OnKeyUp) # generates only one event per key press
+        #self.Bind(wx.EVT_KEY_UP, self.OnKeyUp) # generates only one event per key press
         self.SetFocus() # need this to get the key events
         
         self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -765,25 +765,30 @@ class MyFrame(wx.Frame):
         self.menubar = wx.MenuBar()
         
         file = wx.Menu()
-        file.Append(ID_SELECT, 'Open', 'Open a file')
+        file.Append(ID_SELECT, 'Open\tO', 'Open a file')
         file.Append(ID_EXIT, 'Quit', 'Quit application')
         file.Append(ID_SAVE, 'Save', 'Save image')
         
         caliper = wx.Menu()
-        caliper.Append(ID_CALIB, 'Calibrate', 'Calibrate with known measurement')
-        caliper.Append(ID_CALIPER, 'Caliper', 'Start a new caliper')
-        caliper.Append(ID_REMOVE, 'Remove', 'Remove calipers')
-        caliper.Append(ID_STAMP, 'Stamp', 'Print caliper on image')
+        caliper.Append(ID_CALIB, 'Calibrate\tB', 'Calibrate with known measurement')
+        caliper.Append(ID_CALIPER, 'Caliper\tC', 'Start a new caliper')
+        caliper.Append(ID_REMOVE, 'Remove\tR', 'Remove calipers')
+        caliper.Append(ID_STAMP, 'Stamp\tS', 'Print caliper on image')
+        
+        doodle = wx.Menu()
+        doodle.Append(ID_DOODLE, 'Toggle doodle\tD', 'Start or stop doodling')
+        doodle.Append(ID_CLEAR, 'Clear doodles\tX', 'Clear the current doodles')
         
         playlist = wx.Menu()
         playlist.Append(ID_PREV, 'Previous', 'Open previous image in playlist')
         playlist.Append(ID_NEXT, 'Next', 'Open next image in playlist')
         
         note = wx.Menu()
-        note.Append(ID_NOTE, 'Write', 'Write notes')
+        note.Append(ID_NOTE, 'Write\tN', 'Write notes')
         
         self.menubar.Append(file, "File")
         self.menubar.Append(caliper, "Caliper")
+        self.menubar.Append(doodle, "Doodle")
         self.menubar.Append(note, 'Note')
         self.menubar.Append(playlist, "Playlist")
         self.SetMenuBar(self.menubar)
@@ -818,7 +823,6 @@ class MyFrame(wx.Frame):
                                   , longHelp='Open next image in playlist')
         self.toolbar.AddSeparator()
         
-        # TODO: icons for doodle
         self.toolbar.AddCheckLabelTool(ID_NOTE   , 'Note'
                                   ,  getBitmap('note')
                                   , longHelp='Start doodling on the image')
@@ -843,7 +847,7 @@ class MyFrame(wx.Frame):
                                   , longHelp='About Eepee')
         self.toolbar.Realize()
         
-        
+                
         ## SPLITTER - contains notebook and list
         self.splitter = wx.SplitterWindow(self, style=wx.NO_3D|wx.SP_3D)
         self.splitter.SetMinimumPaneSize(1)
@@ -872,6 +876,7 @@ class MyFrame(wx.Frame):
         listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 5)
         self.listboxpanel.SetSizer(listboxpanelsizer)
         
+        
         ## Bindings
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
         wx.EVT_MENU(self,  ID_CALIPER, self.CaliperStart)
@@ -884,6 +889,7 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_SAVE,   self.displayimage.SaveImage)
         wx.EVT_MENU(self,  ID_DOODLE,   self.window.start_doodle)
         wx.EVT_MENU(self,  ID_CLEAR,   self.window.doodle.Clear)
+        wx.EVT_MENU(self,  ID_NOTE,    self.WriteNotes())
         wx.EVT_CLOSE(self, self.OnClose)
         
         wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
