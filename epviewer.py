@@ -843,7 +843,7 @@ class MyFrame(wx.Frame):
 
         self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_ABOUT   , 'About'
-                                  ,  wx.Bitmap('icons/about.png')
+                                  ,  getBitmap("about")
                                   , longHelp='About Eepee')
         self.toolbar.Realize()
         
