@@ -38,20 +38,31 @@ _version = "0.8.0"
 _author = "Raja Selvaraj"
 
 #------------------------------------------------------------------------------
+        ## wx IDs
+ID_ABOUT    =   wx.NewId();  ID_SELECT   =   wx.NewId()
+ID_CALIB    =   wx.NewId();  ID_CALIPER  =   wx.NewId()
+ID_EXIT     =   wx.NewId();  ID_TEXT     =   wx.NewId()
+ID_STAMP    =   wx.NewId();  ID_REMOVE   =   wx.NewId()
+ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
+ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
+ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
+ID_CLEAR    =   wx.NewId();  ID_NOTE     =   wx.NewId()
+#-------------------------------------------------------------
+
 class Notepad2(wx.Frame):
     """Notepad as a separate window"""
     def __init__(self, parent, id, title):
         wx.Frame.__init__(self, parent, id, title,
                            size=(400,600))
+        self.parent = parent
         panel = wx.Panel(self,-1)
         vbox = wx.BoxSizer(wx.VERTICAL)
         
         self.pad = wx.TextCtrl(self,-1,style=wx.TE_MULTILINE)
         vbox.Add(self.pad, 1, wx.ALL|wx.EXPAND,5)
-                
         self.SetSizer(vbox)
-        wx.EVT_CLOSE(self, self.OnClose)
         
+        wx.EVT_CLOSE(self, self.OnClose)
         self.HIDDEN = True
         
     def ShowNotepad(self, event):
@@ -59,15 +70,18 @@ class Notepad2(wx.Frame):
         if self.HIDDEN:
             self.Show(True)
             self.HIDDEN = False
+            self.parent.toolbar.ToggleTool(ID_NOTE, 1)
 
         else:
             self.Show(False)
-            self.HIDDEN = True        
+            self.HIDDEN = True
+            self.parent.toolbar.ToggleTool(ID_NOTE, 0)
         
     def OnClose(self, event):
         """Hide the window on close"""
         self.Show(False)
         self.HIDDEN = True
+        self.parent.toolbar.ToggleTool(ID_NOTE, 0)
     
     def FillNote(self, note):
         if not note:
@@ -326,15 +340,15 @@ class MainWindow(wx.Window):
     
     
     def start_doodle(self, event):
-        # TODO: change status of doodle icon
-        # toggle state of doodle selected
         if self.doodleselected == False:
             self.caliperselected = False
             self.calibrateselected = False
             self.doodleselected = True
+            self.frame.toolbar.ToggleTool(ID_DOODLE, 1)
         
         else:
             self.doodleselected = False
+            self.frame.toolbar.ToggleTool(ID_DOODLE, 0)            
     
     def StartLeftcaliper(self):
         """Start left caliper when calipers are started"""
@@ -752,16 +766,7 @@ class MyFrame(wx.Frame):
                           style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
         
-        ## wx IDs
-        ID_ABOUT    =   wx.NewId();  ID_SELECT   =   wx.NewId()
-        ID_CALIB    =   wx.NewId();  ID_CALIPER  =   wx.NewId()
-        ID_EXIT     =   wx.NewId();  ID_TEXT     =   wx.NewId()
-        ID_STAMP    =   wx.NewId();  ID_REMOVE   =   wx.NewId()
-        ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
-        ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
-        ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
-        ID_CLEAR    =   wx.NewId();  ID_NOTE     =   wx.NewId()
-        
+       
         ## STATUSBAR
         # statusbar with 4 fields, first for toolbar status messages,
         # second  for filename, third for calibration status
@@ -783,7 +788,7 @@ class MyFrame(wx.Frame):
         caliper.Append(ID_STAMP, 'Stamp\tS', 'Print caliper on image')
         
         doodle = wx.Menu()
-        doodle.Append(ID_DOODLE, 'Toggle doodle\tD', 'Start or stop doodling')
+        doodle.Append(ID_DOODLE, 'Toggle doodle\tD', 'Start or stop doodling', kind=wx.ITEM_CHECK)
         doodle.Append(ID_CLEAR, 'Clear doodles\tX', 'Clear the current doodles')
                 
         playlist = wx.Menu()
@@ -791,7 +796,7 @@ class MyFrame(wx.Frame):
         playlist.Append(ID_NEXT, 'Next', 'Open next image in playlist')
         
         note = wx.Menu()
-        note.Append(ID_NOTE, 'Show/hide notes\tN', 'Show notes')
+        note.Append(ID_NOTE, 'Show/hide notes\tN', 'Show notes', kind=wx.ITEM_CHECK)
         
         self.menubar.Append(file, "File")
         self.menubar.Append(caliper, "Caliper")
@@ -918,8 +923,8 @@ class MyFrame(wx.Frame):
         self.Destroy()
     
     def WriteNotes(self, event):
-        self.toolbar.SetStatus(ID_NOTE, False)
-        self.notepad2.ShowNotepad(None)
+        #self.toolbar.ToggleTool(ID_NOTE, 1)
+        self.notepad2.ShowNotepad(event)
     
     def CaliperStart(self,event):
         self.window.caliperselected = 1
