@@ -6,9 +6,7 @@ An application for viewing, analyzing and presenting ECGs and EP tracings
 ## Imports #
 from __future__ import division
 import wx, Image, os, copy
-from customrubberband import RubberBand
 from geticons import getBitmap
-from slide import Slide
 
 try:
     import cPickle as pickle
@@ -53,14 +51,23 @@ class Notepad2(wx.Frame):
                 
         self.SetSizer(vbox)
         wx.EVT_CLOSE(self, self.OnClose)
-        #wx.EVT_MENU(self, ID_EXIT, self.OnClose)
+        
+        self.HIDDEN = True
         
     def ShowNotepad(self, event):
-        self.Show(True)
+        """Toggle visibility of notes window"""
+        if self.HIDDEN:
+            self.Show(True)
+            self.HIDDEN = False
+
+        else:
+            self.Show(False)
+            self.HIDDEN = True        
         
     def OnClose(self, event):
         """Hide the window on close"""
         self.Show(False)
+        self.HIDDEN = True
     
     def FillNote(self, note):
         if not note:
@@ -243,7 +250,7 @@ class MainWindow(wx.Window):
         
         # Bind key input
         #self.Bind(wx.EVT_KEY_UP, self.OnKeyUp) # generates only one event per key press
-        self.SetFocus() # need this to get the key events
+        #self.SetFocus() # need this to get the key events
         
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         
@@ -270,52 +277,52 @@ class MainWindow(wx.Window):
         self.doodle = Doodle(self)
         self.stampedcalipers = [] #list of stamped calipers
                 
-    def OnKeyUp(self,event):
-        
-        keycode = event.GetKeyCode()
-        
-        if keycode == 79: # 'o' = open
-            self.frame.SelectandDisplayImage(event)
-
-        elif keycode == 366: # '<pg up>' = prev
-            self.frame.SelectPrevImage(event)
-
-        elif keycode == 367: # 'pg down' = next
-            self.frame.SelectNextImage(event)
-        
-        elif keycode == 67: #'c'= caliperstart
-            self.caliperselected = 1
-            self.StartLeftcaliper()
-        
-        elif keycode == 66: #'b' = calibratestart
-            self.caliperselected = 1
-            self.calibrateselected = 1
-            self.StartLeftcaliper()
-          
-        elif keycode == 82: #'r'= caliperremove
-            self.CaliperRemove()
-            
-        elif keycode == 83: #'s' = caliperstamp
-            if self.calipersonscreen == 3 and self.calipertomove == 0:
-                self.CaliperStamp()
-
-        elif keycode == 70: # 'f' = fullscreen mode
-            self.frame.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
-        
-        elif keycode == 27: # 'Esc' = exit fullscreen
-            self.frame.ShowFullScreen(False)
-        
-        elif keycode == 78: # 'n' = notes
-            self.frame.WriteNotes()
-            
-        elif keycode == 68: # 'd' = doodle
-            self.start_doodle(None)
-            
-        elif keycode == 88: # 'x' = clear doodle
-            self.doodle.Clear(event)
-
-        else:
-            print event.GetKeyCode() #TODO : only for testing !
+    #def OnKeyUp(self,event):
+    #    
+    #    keycode = event.GetKeyCode()
+    #    
+    #    if keycode == 79: # 'o' = open
+    #        self.frame.SelectandDisplayImage(event)
+    #
+    #    elif keycode == 366: # '<pg up>' = prev
+    #        self.frame.SelectPrevImage(event)
+    #
+    #    elif keycode == 367: # 'pg down' = next
+    #        self.frame.SelectNextImage(event)
+    #    
+    #    elif keycode == 67: #'c'= caliperstart
+    #        self.caliperselected = 1
+    #        self.StartLeftcaliper()
+    #    
+    #    elif keycode == 66: #'b' = calibratestart
+    #        self.caliperselected = 1
+    #        self.calibrateselected = 1
+    #        self.StartLeftcaliper()
+    #      
+    #    elif keycode == 82: #'r'= caliperremove
+    #        self.CaliperRemove()
+    #        
+    #    elif keycode == 83: #'s' = caliperstamp
+    #        if self.calipersonscreen == 3 and self.calipertomove == 0:
+    #            self.CaliperStamp()
+    #
+    #    elif keycode == 70: # 'f' = fullscreen mode
+    #        self.frame.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
+    #    
+    #    elif keycode == 27: # 'Esc' = exit fullscreen
+    #        self.frame.ShowFullScreen(False)
+    #    
+    #    elif keycode == 78: # 'n' = notes
+    #        self.frame.WriteNotes()
+    #        
+    #    elif keycode == 68: # 'd' = doodle
+    #        self.start_doodle(None)
+    #        
+    #    elif keycode == 88: # 'x' = clear doodle
+    #        self.doodle.Clear(event)
+    #
+    #    else:
+    #        print event.GetKeyCode() #TODO : only for testing !
     
     
     def start_doodle(self, event):
@@ -766,7 +773,7 @@ class MyFrame(wx.Frame):
         
         file = wx.Menu()
         file.Append(ID_SELECT, 'Open\tO', 'Open a file')
-        file.Append(ID_EXIT, 'Quit', 'Quit application')
+        file.Append(ID_EXIT, 'Quit\tQ', 'Quit application')
         file.Append(ID_SAVE, 'Save', 'Save image')
         
         caliper = wx.Menu()
@@ -778,13 +785,13 @@ class MyFrame(wx.Frame):
         doodle = wx.Menu()
         doodle.Append(ID_DOODLE, 'Toggle doodle\tD', 'Start or stop doodling')
         doodle.Append(ID_CLEAR, 'Clear doodles\tX', 'Clear the current doodles')
-        
+                
         playlist = wx.Menu()
         playlist.Append(ID_PREV, 'Previous', 'Open previous image in playlist')
         playlist.Append(ID_NEXT, 'Next', 'Open next image in playlist')
         
         note = wx.Menu()
-        note.Append(ID_NOTE, 'Write\tN', 'Write notes')
+        note.Append(ID_NOTE, 'Show/hide notes\tN', 'Show notes')
         
         self.menubar.Append(file, "File")
         self.menubar.Append(caliper, "Caliper")
@@ -825,13 +832,13 @@ class MyFrame(wx.Frame):
         
         self.toolbar.AddCheckLabelTool(ID_NOTE   , 'Note'
                                   ,  getBitmap('note')
-                                  , longHelp='Start doodling on the image')
+                                  , longHelp='Show / hide notes')
         self.toolbar.AddCheckLabelTool(ID_DOODLE   , 'Doodle'
                                   ,  getBitmap('doodle')
                                   , longHelp='Start doodling on the image')
         self.toolbar.AddLabelTool(ID_CLEAR  , 'Clear'
                                   , getBitmap('clear')
-                                  , longHelp='Clear te doodle')
+                                  , longHelp='Clear the doodle')
         self.toolbar.AddSeparator()
         self.toolbar.AddLabelTool(ID_SAVE    , 'Save'
                                  ,  getBitmap('save')
@@ -889,7 +896,7 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_SAVE,   self.displayimage.SaveImage)
         wx.EVT_MENU(self,  ID_DOODLE,   self.window.start_doodle)
         wx.EVT_MENU(self,  ID_CLEAR,   self.window.doodle.Clear)
-        wx.EVT_MENU(self,  ID_NOTE,    self.WriteNotes())
+        wx.EVT_MENU(self,  ID_NOTE,    self.WriteNotes)
         wx.EVT_CLOSE(self, self.OnClose)
         
         wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -910,7 +917,8 @@ class MyFrame(wx.Frame):
         self.CleanUp()
         self.Destroy()
     
-    def WriteNotes(self):
+    def WriteNotes(self, event):
+        self.toolbar.SetStatus(ID_NOTE, False)
         self.notepad2.ShowNotepad(None)
     
     def CaliperStart(self,event):
@@ -1080,4 +1088,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # write errors to a log file
+    #logfile = 'eepee.log'
+    #fsock = open(logfile,'w')
+    #sys.stderr = fsock
+    
     main()
