@@ -290,53 +290,6 @@ class MainWindow(wx.Window):
         
         self.doodle = Doodle(self)
         self.stampedcalipers = [] #list of stamped calipers
-                
-    #def OnKeyUp(self,event):
-    #    
-    #    keycode = event.GetKeyCode()
-    #    
-    #    if keycode == 79: # 'o' = open
-    #        self.frame.SelectandDisplayImage(event)
-    #
-    #    elif keycode == 366: # '<pg up>' = prev
-    #        self.frame.SelectPrevImage(event)
-    #
-    #    elif keycode == 367: # 'pg down' = next
-    #        self.frame.SelectNextImage(event)
-    #    
-    #    elif keycode == 67: #'c'= caliperstart
-    #        self.caliperselected = 1
-    #        self.StartLeftcaliper()
-    #    
-    #    elif keycode == 66: #'b' = calibratestart
-    #        self.caliperselected = 1
-    #        self.calibrateselected = 1
-    #        self.StartLeftcaliper()
-    #      
-    #    elif keycode == 82: #'r'= caliperremove
-    #        self.CaliperRemove()
-    #        
-    #    elif keycode == 83: #'s' = caliperstamp
-    #        if self.calipersonscreen == 3 and self.calipertomove == 0:
-    #            self.CaliperStamp()
-    #
-    #    elif keycode == 70: # 'f' = fullscreen mode
-    #        self.frame.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
-    #    
-    #    elif keycode == 27: # 'Esc' = exit fullscreen
-    #        self.frame.ShowFullScreen(False)
-    #    
-    #    elif keycode == 78: # 'n' = notes
-    #        self.frame.WriteNotes()
-    #        
-    #    elif keycode == 68: # 'd' = doodle
-    #        self.start_doodle(None)
-    #        
-    #    elif keycode == 88: # 'x' = clear doodle
-    #        self.doodle.Clear(event)
-    #
-    #    else:
-    #        print event.GetKeyCode() #TODO : only for testing !
     
     
     def start_doodle(self, event):
@@ -765,7 +718,6 @@ class MyFrame(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title,pos=(0,0),
                           style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
-        
        
         ## STATUSBAR
         # statusbar with 4 fields, first for toolbar status messages,
@@ -792,8 +744,8 @@ class MyFrame(wx.Frame):
         doodle.Append(ID_CLEAR, 'Clear doodles\tX', 'Clear the current doodles')
                 
         playlist = wx.Menu()
-        playlist.Append(ID_PREV, 'Previous', 'Open previous image in playlist')
-        playlist.Append(ID_NEXT, 'Next', 'Open next image in playlist')
+        playlist.Append(ID_PREV, 'Previous\tPGUP', 'Open previous image in playlist')
+        playlist.Append(ID_NEXT, 'Next\tPGDN', 'Open next image in playlist')
         
         note = wx.Menu()
         note.Append(ID_NOTE, 'Show/hide notes\tN', 'Show notes', kind=wx.ITEM_CHECK)
