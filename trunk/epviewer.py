@@ -298,10 +298,12 @@ class MainWindow(wx.Window):
             self.calibrateselected = False
             self.doodleselected = True
             self.frame.toolbar.ToggleTool(ID_DOODLE, 1)
+            self.frame.SetToolState("doodling")
         
         else:
             self.doodleselected = False
-            self.frame.toolbar.ToggleTool(ID_DOODLE, 0)            
+            self.frame.toolbar.ToggleTool(ID_DOODLE, 0)
+            self.frame.SetToolState("imageloaded")
     
     def StartLeftcaliper(self):
         """Start left caliper when calipers are started"""
@@ -324,6 +326,7 @@ class MainWindow(wx.Window):
                 self.leftcaliper.GetPosition(pos,0)
                 self.leftcaliper.PutCaliper(dc)
                 self.calipersonscreen = 1
+                self.frame.SetToolState("caliperbeingdrawn")
                 
             # There is already one caliper, so fix that and start second
             elif self.calipersonscreen == 1:
@@ -334,6 +337,7 @@ class MainWindow(wx.Window):
                 self.horizbar.GetPosition(pos,self.leftcaliper.x1)
                 self.horizbar.PutCaliper(dc)
                 self.calipersonscreen = 2
+                self.frame.SetToolState("caliperbeingdrawn")
                 
             # Two calipers are already there, so this click fixes second
             elif self.calipersonscreen == 2:
@@ -360,11 +364,14 @@ class MainWindow(wx.Window):
                     self.frame.SetStatusText("Calibrated",2)
                     self.MeasureandDisplay()                        
                     self.CaliperRemove()
+                
+                self.frame.SetToolState("caliperdrawn")
                                         
             # repositioning calipers, now fix it
             elif self.calipertomove <> 0:
                 self.calipertomove = 0
                 self.SetCursor(wx.StockCursor(self.cursors[0]))
+                self.frame.SetToolState("imageloaded")
 
             # two calipers are already drawn and positioned, so hold to reposition
             elif self.calipersonscreen == 3 and self.calipertomove == 0:
@@ -375,6 +382,7 @@ class MainWindow(wx.Window):
                     if self.calipertomove == 3:
                         self.leftcaliperoffset = pos.x - self.leftcaliper.x1
                         self.rightcaliperoffset = pos.x - self.rightcaliper.x1
+                    self.frame.SetToolState("caliperbeingdrawn")
         
         # ready to select zoomframe    
         elif self.zoomselected:
@@ -384,7 +392,7 @@ class MainWindow(wx.Window):
         # TODO: have to send mouse events as a whole to class
         elif self.doodleselected:
             self.doodle.Onleftdown(event)
-        
+                    
     def GetUserEntry(self,message):
         """Get entry from user for calibration.
         Entry must be a positive integer"""
@@ -861,7 +869,12 @@ class MyFrame(wx.Frame):
         ## variables
         self.rootdir = '/data'  # TODO: This is only for testing
         self.sidepanelsize = 40
-                
+        self.alltools = [ID_SELECT, ID_CALIB, ID_CALIPER, ID_EXIT,
+                         ID_TEXT, ID_STAMP, ID_REMOVE, ID_PREV,
+                         ID_NEXT, ID_JUMP, ID_SAVE, ID_DOODLE,
+                         ID_CLEAR, ID_NOTE]
+        self.SetToolState("initial")
+                        
     def Alert(self,title,msg="Undefined"):
         dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
@@ -873,6 +886,26 @@ class MyFrame(wx.Frame):
     def OnClose(self,event):
         self.CleanUp()
         self.Destroy()
+    
+    def SetToolState(self, state):
+        """Disable and enable tools acoording to the state"""
+        ## toolstate is a dict listing icons to enable at each state
+        toolstate = {
+            "initial" : [ID_SELECT, ID_EXIT],
+            "imageloaded" : [ID_CALIB, ID_CALIPER, ID_EXIT,
+                             ID_TEXT, ID_PREV, ID_NEXT, ID_JUMP,
+                             ID_SAVE, ID_DOODLE, ID_CLEAR, ID_NOTE],
+            "caliperbeingdrawn" : [ID_EXIT],
+            "caliperdrawn" : [ID_STAMP, ID_REMOVE,ID_EXIT],
+            "doodling" : [ID_DOODLE, ID_CLEAR, ID_EXIT]
+            }
+        for ID in self.alltools:
+            if ID in toolstate[state]:
+                self.menubar.Enable(ID, True)
+                self.toolbar.EnableTool(ID, True)
+            else:
+                self.menubar.Enable(ID, False)
+                self.toolbar.EnableTool(ID, False)
     
     def WriteNotes(self, event):
         #self.toolbar.ToggleTool(ID_NOTE, 1)
@@ -1029,6 +1062,7 @@ class MyFrame(wx.Frame):
         self.SetStatusText(os.path.basename(
                           self.playlist.playlist[self.playlist.nowshowing]), 1)
         self.notepad2.FillNote(self.displayimage.note)
+        self.SetToolState("imageloaded")
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
