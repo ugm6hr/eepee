@@ -7,7 +7,6 @@ An application for viewing, analyzing and presenting ECGs and EP tracings
 from __future__ import division
 import wx, Image, os, sys, copy
 from geticons import getBitmap
-import commands
 
 try:
     import cPickle as pickle
@@ -217,12 +216,12 @@ class Measurement():
         self.measurementdisplay = ''
         
     def MeasureDistance(self,leftx,rightx):
-        self.measurement = abs(leftx - rightx)
+        self.raw_measurement = abs(leftx - rightx)
         if self.calibration:
-            self.measurement *= self.calibration
+            self.measurement = self.raw_measurement * self.calibration
         self.measurementdisplay = ' '.join((str(int(self.measurement)),self.units))
 
-
+#-------------------------------------------------------------------------
 class Doodle():
     """Doodle on the image window"""
     def __init__(self, parent):
@@ -367,7 +366,7 @@ class MainWindow(wx.Window):
                     
                     # get calibration
                     self.measurement.calibration = (int(calibration)/
-                                                  self.measurement.measurement)                                            
+                                                  self.measurement.raw_measurement)                                            
                     self.measurement.units = "ms"
                     self.frame.SetStatusText("Calibrated",2)
                     self.MeasureandDisplay()                        
@@ -1020,7 +1019,7 @@ class MyFrame(wx.Frame):
                 if os.path.exists(pklfile):
                     os.remove(pklfile)  
                 pickle.dump(datadict, open(pklfile, 'w'))
-                status = os.system("attrib +h \"%s\"" %(pklfile))
+                status = os.popen("attrib +h \"%s\"" %(pklfile))
                 if status != 0:
                     pass
                     #TODO: raise error
