@@ -4,7 +4,7 @@ rajajs {at} gmail {dot} com
 
 version 0.8.0
 -------------
-
+Aug 09, 2008
   * Removed the ability to create slides
   * Notes, calibration etx are stored as a pickled dictionary
   * Added ability to sketch (doodle) on the image
