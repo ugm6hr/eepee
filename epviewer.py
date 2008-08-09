@@ -41,13 +41,12 @@ _author = "Raja Selvaraj"
         ## wx IDs
 ID_ABOUT    =   wx.NewId();  ID_SELECT   =   wx.NewId()
 ID_CALIB    =   wx.NewId();  ID_CALIPER  =   wx.NewId()
-ID_EXIT     =   wx.NewId();  ID_TEXT     =   wx.NewId()
-ID_STAMP    =   wx.NewId();  ID_REMOVE   =   wx.NewId()
-ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
-ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
-ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
-ID_CLEAR    =   wx.NewId();  ID_NOTE     =   wx.NewId()
-ID_KEYS     =   wx.NewId()
+ID_EXIT     =   wx.NewId();  ID_STAMP    =   wx.NewId()
+ID_REMOVE   =   wx.NewId();  ID_PREV     =   wx.NewId()
+ID_NEXT     =   wx.NewId();  ID_JUMP     =   wx.NewId()
+ID_SAVE     =   wx.NewId();  ID_FRAME    =   wx.NewId()
+ID_DOODLE   =   wx.NewId();  ID_CLEAR    =   wx.NewId()
+ID_NOTE     =   wx.NewId();  ID_KEYS     =   wx.NewId()
 #-------------------------------------------------------------
 shortcuts = """
 Keyboard shortcuts:
@@ -66,7 +65,6 @@ Show/hide note\t-\tn\n
 Quit\t\t\t\t-\tq\n
 """
 #------------------------------------------------------------------------------
-
 
 class Notepad2(wx.Frame):
     """Notepad as a separate window"""
@@ -899,9 +897,8 @@ class MyFrame(wx.Frame):
         self.rootdir = '/data'  # TODO: This is only for testing
         self.sidepanelsize = 40
         self.alltools = [ID_SELECT, ID_CALIB, ID_CALIPER, ID_EXIT,
-                         ID_TEXT, ID_STAMP, ID_REMOVE, ID_PREV,
-                         ID_NEXT, ID_JUMP, ID_SAVE, ID_DOODLE,
-                         ID_CLEAR, ID_NOTE]
+                         ID_STAMP, ID_REMOVE, ID_PREV, ID_NEXT,
+                         ID_SAVE, ID_DOODLE, ID_CLEAR, ID_NOTE]
         self.SetToolState("initial")
                         
     def Alert(self,title,msg="Undefined"):
