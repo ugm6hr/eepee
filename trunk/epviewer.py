@@ -5,7 +5,7 @@ An application for viewing, analyzing and presenting ECGs and EP tracings
 
 ## Imports #
 from __future__ import division
-import wx, Image, os, copy
+import wx, Image, os, sys, copy
 from geticons import getBitmap
 
 try:
