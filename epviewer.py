@@ -101,7 +101,7 @@ class Caliper():
     """
     def __init__(self, parent):
         self.height = parent.GetSize()[1]
-                
+
         #initialize pen
         self.pen =wx.Pen(wx.Colour(255, 255, 255), 1, wx.SOLID)
         self.units = "pixels"
@@ -371,7 +371,7 @@ class MainWindow(wx.Window):
             elif self.calipertomove <> 0:
                 self.calipertomove = 0
                 self.SetCursor(wx.StockCursor(self.cursors[0]))
-                self.frame.SetToolState("imageloaded")
+                self.frame.SetToolState("caliperdrawn")
 
             # two calipers are already drawn and positioned, so hold to reposition
             elif self.calipersonscreen == 3 and self.calipertomove == 0:
@@ -514,6 +514,8 @@ class MainWindow(wx.Window):
         self.leftcaliper = None
         self.rightcaliper = None
         self.horizbar = None
+        
+        self.frame.SetToolState("imageloaded")
     
     def OnRightClick(self,event):
         if self.caliperselected:
@@ -563,7 +565,8 @@ class MainWindow(wx.Window):
         self.leftcaliper = None
         self.rightcaliper = None
         self.horizbar = None
-
+        
+        self.frame.SetToolState("imageloaded")
     
     def OnDoubleClick(self,event):
         # check caliper to move because sometimes the first click
@@ -1003,16 +1006,13 @@ class MyFrame(wx.Frame):
             
             imagefile = self.playlist.playlist[self.playlist.nowshowing]
            
-            # save as hidden file
-            if os.name == 'posix':
-                pklfile = os.path.dirname(imagefile) + "/." + \
-                          os.path.splitext(os.path.basename(imagefile))[0] +\
-                          ".pkl"
-                pickle.dump(datadict, open(pklfile, 'w'))
+            pklfile = os.path.join(os.path.dirname(imagefile),
+                      "." + os.path.splitext(os.path.basename(imagefile))[0] +
+                      ".pkl")
+            pickle.dump(datadict, open(pklfile, 'w'))
             
-            elif os.name == 'nt':
-                pklfile = os.path.splitext(imagefile)[0] + ".pkl"
-                pickle.dump(datadict, open(pklfile, 'w'))
+            # in windows, set file attribute to hidden
+            if os.name == 'nt':
                 status = commands.getstatus("attrib +h %s" %(pklfile))
                 if status != 0:
                     pass
@@ -1020,12 +1020,9 @@ class MyFrame(wx.Frame):
 
     def GetData(self, imagefile):
         """Read stored data if present"""
-        if os.name == 'posix':
-            pklfile = os.path.dirname(imagefile) + "/." + \
-                          os.path.splitext(os.path.basename(imagefile))[0] +\
-                          ".pkl"
-        elif os.name == 'nt':
-            pklfile = os.path.splitext(imagefile)[0] + ".pkl"
+        pklfile = os.path.join(os.path.dirname(imagefile),
+                      "." + os.path.splitext(os.path.basename(imagefile))[0] +
+                      ".pkl")
         
         if os.path.exists(pklfile):
                 self.displayimage.data = pickle.load(open(pklfile,'r'))
