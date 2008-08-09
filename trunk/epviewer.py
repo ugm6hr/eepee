@@ -60,6 +60,8 @@ x - Clear doodle\n
 PgDn - Next image\n
 PgDn - Prev image\n
 n - Show/hide note\n
+Right click - Removes caliper\n
+Double click - Stamps caliper\n
 q - Quit\n
 """
 #------------------------------------------------------------------------------
@@ -369,8 +371,10 @@ class MainWindow(wx.Window):
                     self.frame.SetStatusText("Calibrated",2)
                     self.MeasureandDisplay()                        
                     self.CaliperRemove()
+                    self.frame.SetToolState("imageloaded")
                 
-                self.frame.SetToolState("caliperdrawn")
+                else:
+                    self.frame.SetToolState("caliperdrawn")
                                         
             # repositioning calipers, now fix it
             elif self.calipertomove <> 0:
