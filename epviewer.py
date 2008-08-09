@@ -28,11 +28,11 @@ Image._initialized = 2
 _title          = "EP viewer"
 _about          = """
 Eepee v 0.8
-An application to view, analyze and present EP tracings\n   
-Author: Raja S. \n 
-rajajs@gmail.com\n
-License: GPL
-For more information and for updates visit\n  
+An application to view, analyze and present EP tracings\n
+Author: Raja S. 
+rajajs@gmail.com
+License: GPL\n
+For more information and for updates visit
 http:\\code.google.com\p\eepee\n"""
 _version = "0.8.0"
 _author = "Raja Selvaraj"
@@ -47,7 +47,26 @@ ID_PREV     =   wx.NewId();  ID_NEXT     =   wx.NewId()
 ID_JUMP     =   wx.NewId();  ID_SAVE     =   wx.NewId()
 ID_FRAME    =   wx.NewId();  ID_DOODLE   =   wx.NewId()
 ID_CLEAR    =   wx.NewId();  ID_NOTE     =   wx.NewId()
+ID_KEYS     =   wx.NewId()
 #-------------------------------------------------------------
+shortcuts = """
+Keyboard shortcuts:
+===================
+
+Open file\t\t\t-\to\n
+Calibrate\t\t\t-\tb\n
+Start caliper\t\t-\tc\n
+Stamp caliper\t\t-\ts\n
+Remove caliper\t-\tr\n
+Start/stop doodle\t-\td\n
+Clear doodle\t\t-\tx\n
+Next image\t\t-\tPgDn\n
+Prev image\t\t-\tPgUp\n
+Show/hide note\t-\tn\n
+Quit\t\t\t\t-\tq\n
+"""
+#------------------------------------------------------------------------------
+
 
 class Notepad2(wx.Frame):
     """Notepad as a separate window"""
@@ -761,11 +780,16 @@ class MyFrame(wx.Frame):
         note = wx.Menu()
         note.Append(ID_NOTE, 'Show/hide notes\tN', 'Show notes', kind=wx.ITEM_CHECK)
         
+        help = wx.Menu()
+        help.Append(ID_ABOUT, 'About eepee', 'About')
+        help.Append(ID_KEYS, 'List keyboard shortcuts', 'Shortcuts')
+        
         self.menubar.Append(file, "File")
         self.menubar.Append(caliper, "Caliper")
         self.menubar.Append(doodle, "Doodle")
         self.menubar.Append(note, 'Note')
         self.menubar.Append(playlist, "Playlist")
+        self.menubar.Append(help, "Help")
         self.SetMenuBar(self.menubar)
         
         ## TOOLBAR
@@ -865,6 +889,8 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_DOODLE,   self.window.start_doodle)
         wx.EVT_MENU(self,  ID_CLEAR,   self.window.doodle.Clear)
         wx.EVT_MENU(self,  ID_NOTE,    self.WriteNotes)
+        wx.EVT_MENU(self,  ID_ABOUT,   self.About)
+        wx.EVT_MENU(self,  ID_KEYS,    self.ListKeys)
         wx.EVT_CLOSE(self, self.OnClose)
         
         wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -879,12 +905,16 @@ class MyFrame(wx.Frame):
         self.SetToolState("initial")
                         
     def Alert(self,title,msg="Undefined"):
-        dlg = wx.MessageDialog(self, msg,title, wx.OK | wx.ICON_INFORMATION)
+        dlg = wx.MessageDialog(self, msg,title, wx.OK)
         dlg.ShowModal()
         dlg.Destroy()
 
     def About(self, event):
         self.Alert("About",_about)
+        
+    def ListKeys(self, event):
+        """List the keyboard shortcuts"""
+        self.Alert("Keyboard Shortcuts", shortcuts)
   
     def OnClose(self,event):
         self.CleanUp()
