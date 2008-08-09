@@ -904,7 +904,7 @@ class MyFrame(wx.Frame):
         ## toolstate is a dict listing icons to enable at each state
         toolstate = {
             "initial" : [ID_SELECT, ID_EXIT],
-            "imageloaded" : [ID_CALIB, ID_CALIPER, ID_EXIT,
+            "imageloaded" : [ID_SELECT, ID_CALIB, ID_CALIPER, ID_EXIT,
                              ID_PREV, ID_NEXT, ID_SAVE,
                              ID_DOODLE, ID_CLEAR, ID_NOTE],
             "caliperbeingdrawn" : [ID_EXIT],
