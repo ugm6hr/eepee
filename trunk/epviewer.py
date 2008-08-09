@@ -7,6 +7,7 @@ An application for viewing, analyzing and presenting ECGs and EP tracings
 from __future__ import division
 import wx, Image, os, sys, copy
 from geticons import getBitmap
+import commands
 
 try:
     import cPickle as pickle
@@ -1008,11 +1009,18 @@ class MyFrame(wx.Frame):
             pklfile = os.path.join(os.path.dirname(imagefile),
                       "." + os.path.splitext(os.path.basename(imagefile))[0] +
                       ".pkl")
-            pickle.dump(datadict, open(pklfile, 'w'))
+            
+            if os.name == 'posix':
+                pickle.dump(datadict, open(pklfile, 'w'))
             
             # in windows, set file attribute to hidden
-            if os.name == 'nt':
-                status = commands.getstatus("attrib +h %s" %(pklfile))
+            elif os.name == 'nt':
+                ## have to remove the hidden file because it doesnt have
+                ## write permission
+                if os.path.exists(pklfile):
+                    os.remove(pklfile)  
+                pickle.dump(datadict, open(pklfile, 'w'))
+                status = os.system("attrib +h \"%s\"" %(pklfile))
                 if status != 0:
                     pass
                     #TODO: raise error
