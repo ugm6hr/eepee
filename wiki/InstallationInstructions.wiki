@@ -3,9 +3,9 @@
 
 = Windows =
 
-* Method 1: Download the installer from the home page and run it to install the program. 
-The binary was compiled on Windows XP and has not been tested on other versions of Windows.
-* Alternative is to follow steps described below in Linux section if you have Python already installed.
+  * Method 1: Download the installer from the home page and run it to install the program. 
+    The binary was compiled on Windows XP and has not been tested on other versions of   windows.
+  * Alternative is to follow steps described below in Linux section if you have Python already installed.
 
 = Linux =
 
