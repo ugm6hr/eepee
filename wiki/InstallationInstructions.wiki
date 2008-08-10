@@ -1,20 +1,15 @@
 #summary How to install.
 #labels Featured
 
-= Introduction =
+= Windows =
 
-Compiled binary (.exe) is available for windows.
-Archived source files (.tar.gz) is available for all platforms.
+* Method 1: Download the installer from the home page and run it to install the program. 
+The binary was compiled on Windows XP and has not been tested on other versions of Windows.
+* Alternative is to follow steps described below in Linux section if you have Python already installed.
 
-= Binary file (Windows) =
+= Linux =
 
-~~An installer is not currently available.~~
-Just download the exe file from the downloads page and click on it to ~~run.~~ install.
-
-Tested only with Windows 2000 and XP so far.
-
-= Archive (Linux or Windows) =
-
+Install from source. 
 == Requirements: ==
   * Python >= 2.4
   * Wxpython >=2.6
@@ -25,3 +20,8 @@ Tested only with Windows 2000 and XP so far.
   * Then run the setup.py as follows
   * python setup.py install
   
+You may need root or sudo priveleges.
+
+= Mac = 
+
+It should be possible to run the source files with a few small modifications. If someone requires it on Mac, or gets it to run on it, please let me know.
