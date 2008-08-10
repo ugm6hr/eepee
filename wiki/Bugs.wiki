@@ -1,8 +1,0 @@
-= Known bugs =
-
-==Version 0.7==
-  * All slides are not deleted cleanly when changing from an image with slides to one without
-  
-==Version 0.6==
-  * tiff images are not loaded with the windows binary - fixed in 0.7
-  * Calibrate status not updated immediately on calibrating an uncalibrated image - fixed  
