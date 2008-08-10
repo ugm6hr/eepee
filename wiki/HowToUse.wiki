@@ -5,7 +5,7 @@
 
 The first step is to have an image to analyze.
 The possible sources are scanned ECG or EP tracings or digital images that are downloaded.
-The formats that are accepted are bitmap (.bmp), jpeg (.jpg or .jpeg), tiff images (.tif or .tiff) and gif images (.gif). *NEW* A set of sample images is available for download now.
+The formats that are accepted are bitmap (.bmp), jpeg (.jpg or .jpeg), tiff images (.tif or .tiff) and gif images (.gif). 
 
 = Using Eepee =
 
@@ -18,4 +18,3 @@ The formats that are accepted are bitmap (.bmp), jpeg (.jpg or .jpeg), tiff imag
   * You can save the image with the calipers and the measurement by clicking on the 'Save' icon. Currently, the image is always saved as a .png file. 
   * You can add notes for the image by clicking on the notes tab. Notes are automatically saved when you close the application or open another image.
   * You can open another image by clicking on the 'Open file' icon again. However you can also use the 'Next' and 'Previous' buttons to open other files in the directory. The other image files in the directory are also listed as a playlist on the right side and you can open one of them by double-clicking on its name.
-  * *NEW* Now you can add slides for presentation. This is done by adding appropriately formatted text in the notes. A slide starts and ends with '==' and the the slide title is enclosed between '**'. Look at the sample slides for two examples.
