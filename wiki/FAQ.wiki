@@ -2,7 +2,7 @@
 
 *What image formats can be used?*
 
-Bitmap (`*.bmp`), tiff (`*.tif, *.tiff`), jpeg (`*.jpg, *.jpeg`) and gif (`*.gif`) 
+Bitmap (`*.bmp`), tiff (`*.tif, *.tiff`), jpeg (`*.jpg, *.jpeg`), png(`*.png`) and gif (`*.gif`) 
 
 *In what format can I save the image?*
 
@@ -10,7 +10,7 @@ Currently, the saved images will be in the png format. If you dont specify an ex
 
 *Where are the notes and the calibration information stored?*
 
-The information for any 'image.xyz' is stored in a file called 'image.note' in the same directory. This is a plain text file and you can view it with a text editor. Do not modify it with a text editor because reading the calibration and other information is dependent on the file being in the correct format. Also, if you are changing the location of the image file or passing it on to someone, you have to copy the note file to the new location too to transfer the notes and calibration.
+The information for any 'image.xyz' is stored in a file called '.image.pkl' in the same directory. This is generally stored as a hidden file. You should not need to access this file directly for any reason. But if you want to transfer a file or share it with others and want to transfer the notes and calibration too, then you should include this file.
 
 *Can I use the calipers without calibrating?*
 
