@@ -219,6 +219,8 @@ class Measurement():
         self.raw_measurement = abs(leftx - rightx)
         if self.calibration:
             self.measurement = self.raw_measurement * self.calibration
+        else:
+           self.measurement = self.raw_measurement 
         self.measurementdisplay = ' '.join((str(int(self.measurement)),self.units))
 
 #-------------------------------------------------------------------------
