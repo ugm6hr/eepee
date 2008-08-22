@@ -64,7 +64,19 @@ Right click - Removes caliper\n
 Double click - Stamps caliper\n
 q - Quit\n
 """
+
+accepted_formats = 'Supported formats|' + '*.png;*.PNG;*.tif;*.TIF;' +\
+                  '*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;' +\
+                  '*.bmp;*.BMP;*.gif;*.GIF'
 #------------------------------------------------------------------------------
+class Error(Exception):
+    """All errors"""
+    def __init__(self, value):
+        self.value = value
+        
+    def __str__(self):
+        return repr(self.value)
+#-----------------------------------------------------------------------------
 
 class Notepad2(wx.Frame):
     """Notepad as a separate window"""
@@ -716,18 +728,34 @@ class DisplayImage():
 
         dlg = wx.FileDialog(self.parent, "Save image as...", os.getcwd(),
                             style=wx.SAVE | wx.OVERWRITE_PROMPT,
-                            wildcard = 'png files|*.png')
+                            wildcard=accepted_formats)
         if dlg.ShowModal() == wx.ID_OK:
             savefilename = dlg.GetPath()
             dlg.Destroy()
         else:
             dlg.Destroy()
             return
+        
+        # if not a valid extension (or if no extension), save as png
+        # gif not supported for now
+        try:
+            extension  = os.path.splitext(savefilename)[1].lower()
+            if extension in ['.tif', '.tiff']:
+                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_TIF)
+            elif extension in ['.jpg', '.jpeg']:
+                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_JPEG)
+            elif extension == '.bmp':
+                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_BMP)
+            else:
+                savefilename = os.path.splitext(savefilename)[0] + '.png'
+                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_PNG)
+            
+            if not succeeded:
+                raise Error, "Unable to save file"
 
-        if not os.path.splitext(savefilename)[1]:
-            savefilename += '.png'
-        savebmp.SaveFile(savefilename,wx.BITMAP_TYPE_PNG)
-
+        except:
+            print 'Error' # TODO: Catch specific errors and handle meaningfully
+            
 #-----------------------------------------------------------------------------               
 class MyFrame(wx.Frame):
 
@@ -1041,10 +1069,8 @@ class MyFrame(wx.Frame):
         self.width, self.height = self.window.GetSize()
         self.displayimage.windowwidth, self.displayimage.windowheight = \
                                        self.width, self.height
-        filters = 'Supported formats|' + '*.png;*.PNG;*.tif;*.TIF;' +\
-                  '*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;' +\
-                  '*.bmp;*.BMP;*.gif;*.GIF'
-        dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=filters)
+        
+        dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=accepted_formats)
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
         else:
