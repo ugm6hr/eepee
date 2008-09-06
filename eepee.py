@@ -6,7 +6,6 @@ from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 from geticons import getBitmap
 
 #------------------------------------------------------------------------------#
-#ID_ABOUT    =   wx.NewId()
 ID_OPEN     =   wx.NewId()
 ID_SAVE     =   wx.NewId()
 ID_EXIT     =   wx.NewId()
@@ -45,67 +44,39 @@ class MyFrame(wx.Frame):
         self.toolbar.AddLabelTool(ID_SAVE, 'Save',  getBitmap('save')
                                  , longHelp='Save the image with stamped calipers')
         self.toolbar.AddSeparator()
-        #self.toolbar.AddLabelTool(ID_CALIB, 'Calibrate',getBitmap('calibrate')
-        #                          , longHelp='Calibrate with known measurement')
-        #self.toolbar.AddLabelTool(ID_CALIPER, 'Caliper', getBitmap('caliper')
-        #                          , longHelp='Start a new caliper')
-        #self.toolbar.AddLabelTool(ID_REMOVE, 'Remove Caliper'
-        #                          , getBitmap('caliper_remove')
-        #                          , longHelp='Remove the current caliper' )
-        #self.toolbar.AddLabelTool(ID_STAMP   , 'Stamp Caliper'
-        #                          ,  getBitmap('stamp')
-        #                          , longHelp='Print the caliper on image')
-        #self.toolbar.AddSeparator()
-        #self.toolbar.AddLabelTool(ID_PREV, 'Previous', getBitmap('previous')
-        #                          , longHelp='Open previous image in playlist')
-        #self.toolbar.AddLabelTool(ID_NEXT, 'Next', getBitmap('next')
-        #                          , longHelp='Open next image in playlist')
-        #self.toolbar.AddSeparator()
-        
-        #self.toolbar.AddCheckLabelTool(ID_NOTE, 'Note',  getBitmap('note')
-         #                         , longHelp='Show / hide notes')
-        #self.toolbar.AddCheckLabelTool(ID_DOODLE , 'Doodle',  getBitmap('doodle')
-        #                          , longHelp='Start doodling on the image')
-        #self.toolbar.AddLabelTool(ID_CLEAR, 'Clear', getBitmap('clear')
-        #                          , longHelp='Clear the doodle')
-        
-        #self.toolbar.AddSeparator()
-        
+                
         self.toolbar.AddLabelTool(ID_EXIT, 'Exit', getBitmap("exit")
                                   , longHelp='Exit the application')
         
-        #self.toolbar.AddSeparator()        
-        #self.toolbar.AddLabelTool(ID_ABOUT ,'About',  getBitmap("about")
-        #                          , longHelp='About Eepee')
         self.toolbar.Realize()
         
-        #----------------------------------------------------------------------
+        #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
         self.splitter = wx.SplitterWindow(self, style=wx.SP_3D)
         self.splitter.SetMinimumPaneSize(10)
         
-        # The drawing canvas
+        # The windows inside the splitter are a
+        # 1. The drawing canvas - float canvas form images
+        # 2. A notebook panel holding the playlist and notes
         self.canvas = DrawingCanvas(self.splitter)
+        self.notebookpanel = wx.Panel(self.splitter, -1)
         
-                
-        #self.imagepanel = wx.Panel(self.splitter,-1)
-        self.listboxpanel = wx.Panel(self.splitter, -1)
-        self.listbox = wx.ListBox(self.listboxpanel,-1)
-        self.listbox.Show(True)       
-        
-        #self.splitter.SplitVertically(self.canvas,self.listboxpanel)
-        #self.splitter.Unsplit() #I dont know the size yet
-       
+        self.nb = wx.Notebook(self.notebookpanel) # will be a panel later
+        self.listbox = wx.ListBox(self.nb, -1)
+        #self.listbox.Show(True)
+        self.notepad = wx.TextCtrl(self.nb, -1)
+        self.nb.AddPage(self.listbox, "Playlist")
+        self.nb.AddPage(self.notepad, "Notes")
         
         #---- All the sizers --------------------------------------
-        #imagepanelsizer = wx.BoxSizer()
-        #imagepanelsizer.Add(self.canvas, 1, wx.ALL|wx.EXPAND, 5)
-        #self.imagepanel.SetSizer(imagepanelsizer)
+        notebooksizer = wx.BoxSizer()
+        notebooksizer.Add(self.nb, 1, wx.EXPAND)
+        self.notebookpanel.SetSizer(notebooksizer)
         
-        listboxpanelsizer = wx.BoxSizer()
-        listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 0)
-        self.listboxpanel.SetSizer(listboxpanelsizer)
-        
+        #listboxpanelsizer = wx.BoxSizer()
+        #listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 0)
+        #self.listboxpanel.SetSizer(listboxpanelsizer)
+                
         framesizer = wx.BoxSizer()
         framesizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.SetSizer(framesizer)
@@ -140,7 +111,7 @@ class MyFrame(wx.Frame):
         wx.FutureCall(1000, self.LateInit)
     
     def LateInit(self):
-        self.splitter.SplitVertically(self.canvas,self.listboxpanel)
+        self.splitter.SplitVertically(self.canvas,self.notebookpanel)
         self.splitter.SetSashPosition(self.GetSize()[0] - 120)
         self.Bind(wx.EVT_SIZE, self.OnSize)
     
