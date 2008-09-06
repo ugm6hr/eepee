@@ -2,6 +2,13 @@ EPviewer
 (c)Raja S
 rajajs {at} gmail {dot} com
 
+version 0.8.1
+-------------
+
+ * Corrected error in measurement display of uncalibrated images
+ * Can save image in various formats now
+
+
 version 0.8.0
 -------------
 Aug 09, 2008
