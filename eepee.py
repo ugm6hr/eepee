@@ -84,29 +84,30 @@ class MyFrame(wx.Frame):
         self.splitter = wx.SplitterWindow(self, style=wx.SP_3D)
         self.splitter.SetMinimumPaneSize(10)
         
-        self.imagepanel = wx.Panel(self.splitter,-1)
-        self.listboxpanel = wx.Panel(self.splitter, -1)
-        
-        self.listbox = wx.ListBox(self.listboxpanel,-1)
-        self.listbox.Show(True)
-        
-        self.splitter.SplitVertically(self.imagepanel,self.listboxpanel)
-        self.splitter.Unsplit() #I dont know the size yet
-        
         # The drawing canvas
-        self.canvas = DrawingCanvas(self)
+        self.canvas = DrawingCanvas(self.splitter)
+        
+                
+        #self.imagepanel = wx.Panel(self.splitter,-1)
+        self.listboxpanel = wx.Panel(self.splitter, -1)
+        self.listbox = wx.ListBox(self.listboxpanel,-1)
+        self.listbox.Show(True)       
+        
+        #self.splitter.SplitVertically(self.canvas,self.listboxpanel)
+        #self.splitter.Unsplit() #I dont know the size yet
+       
         
         #---- All the sizers --------------------------------------
-        imagepanelsizer = wx.BoxSizer()
-        imagepanelsizer.Add(self.canvas, 1, wx.ALL|wx.EXPAND, 5)
-        self.imagepanel.SetSizer(imagepanelsizer)
+        #imagepanelsizer = wx.BoxSizer()
+        #imagepanelsizer.Add(self.canvas, 1, wx.ALL|wx.EXPAND, 5)
+        #self.imagepanel.SetSizer(imagepanelsizer)
         
         listboxpanelsizer = wx.BoxSizer()
-        listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 5)
+        listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 0)
         self.listboxpanel.SetSizer(listboxpanelsizer)
         
         framesizer = wx.BoxSizer()
-        framesizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 0)
+        framesizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.SetSizer(framesizer)
         
         #--------------------------------------------------------
@@ -139,7 +140,7 @@ class MyFrame(wx.Frame):
         wx.FutureCall(1000, self.LateInit)
     
     def LateInit(self):
-        self.splitter.SplitVertically(self.imagepanel,self.listboxpanel)
+        self.splitter.SplitVertically(self.canvas,self.listboxpanel)
         self.splitter.SetSashPosition(self.GetSize()[0] - 120)
         self.Bind(wx.EVT_SIZE, self.OnSize)
     
@@ -245,7 +246,7 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
     """A Floatcanvas object for drawing"""
     def __init__(self, parent):
         FloatCanvas.FloatCanvas.__init__(self, parent, Debug = 0)
-        self.frame = parent
+        self.frame = wx.GetTopLevelParent(self)
 
     def DisplayImage(self):
         """Display a scaled bitmap centered on the canvas"""
