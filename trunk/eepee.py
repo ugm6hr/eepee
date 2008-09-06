@@ -6,7 +6,7 @@ from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 from geticons import getBitmap
 
 #------------------------------------------------------------------------------#
-ID_OPEN     =   wx.NewId()
+ID_OPEN     =   wx.NewId() ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()
 ID_EXIT     =   wx.NewId()
 #-------------------------------------------------------------------------------
@@ -26,9 +26,10 @@ class MyFrame(wx.Frame):
         MenuBar = wx.MenuBar()
 
         file_menu = wx.Menu()
-        item = file_menu.Append(-1, "&Open","Open file")
-        item = file_menu.Append(-1, "&Save","Save Image")
-        
+        file_menu.Append(ID_OPEN, "&Open","Open file")
+        file_menu.Append(ID_SAVE, "&Save","Save Image")
+        file_menu.Append(ID_EXIT, "&Exit","Exit")
+   
         MenuBar.Append(file_menu, "&File")
         
         self.SetMenuBar(MenuBar)
@@ -43,10 +44,16 @@ class MyFrame(wx.Frame):
                                              , longHelp='Open a file')
         self.toolbar.AddLabelTool(ID_SAVE, 'Save',  getBitmap('save')
                                  , longHelp='Save the image with stamped calipers')
-        self.toolbar.AddSeparator()
-                
+        
+        self.toolbar.AddSeparator()        
         self.toolbar.AddLabelTool(ID_EXIT, 'Exit', getBitmap("exit")
                                   , longHelp='Exit the application')
+        
+        self.toolbar.AddSeparator()
+        self.toolbar.AddCheckLabelTool(ID_UNSPLIT, 'Toggle sidepanel',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Toggle sidepanel')
         
         self.toolbar.Realize()
         
@@ -96,6 +103,9 @@ class MyFrame(wx.Frame):
         #-------- Bindings ----------------------------------------------------
         wx.EVT_MENU(self,  ID_OPEN, self.OnOpen)
         wx.EVT_MENU(self,  ID_SAVE, self.OnSave)
+        
+        wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
+        
         wx.EVT_MENU(self,  ID_EXIT, self.OnExit)
         
         self.Bind(wx.EVT_IDLE, self.RefreshDrawing)
@@ -114,6 +124,14 @@ class MyFrame(wx.Frame):
         self.splitter.SplitVertically(self.canvas,self.notebookpanel)
         self.splitter.SetSashPosition(self.GetSize()[0] - 160)
         self.Bind(wx.EVT_SIZE, self.OnSize)
+    
+    def SplitUnSplit(self, event):
+        """Unsplit or resplit the splitter"""
+        if self.splitter.IsSplit():
+            self.splitter.Unsplit()
+        else:
+            self.splitter.SplitVertically(self.canvas,self.notebookpanel)
+            self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
     
     def OnExit(self, event):
         """Exit the application"""
@@ -218,12 +236,13 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
     def __init__(self, parent):
         FloatCanvas.FloatCanvas.__init__(self, parent, Debug = 0)
         self.frame = wx.GetTopLevelParent(self)
-
+        
     def DisplayImage(self):
         """Display a scaled bitmap centered on the canvas"""
         self.ClearAll()
-        self.bg = self.AddScaledBitmap(self.frame.image,
-                              (0,0), Height=800, Position="cc")
+        self.imageheight = self.frame.image.GetHeight()
+        self.bg = self.AddScaledBitmap(self.frame.image,(0,0),
+                                       Height=self.imageheight, Position="cc")
         self.ZoomToBB(self.bg.BoundingBox)
     
     def DrawBackground(self):
