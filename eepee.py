@@ -112,7 +112,7 @@ class MyFrame(wx.Frame):
     
     def LateInit(self):
         self.splitter.SplitVertically(self.canvas,self.notebookpanel)
-        self.splitter.SetSashPosition(self.GetSize()[0] - 120)
+        self.splitter.SetSashPosition(self.GetSize()[0] - 160)
         self.Bind(wx.EVT_SIZE, self.OnSize)
     
     def OnExit(self, event):
