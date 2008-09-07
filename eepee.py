@@ -133,6 +133,8 @@ class MyFrame(wx.Frame):
         else:
             self.splitter.SplitVertically(self.canvas,self.notebookpanel)
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
+        
+        self._BGchanged = True
     
     def OnExit(self, event):
         """Exit the application"""
@@ -249,14 +251,6 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
         self.frame = wx.GetTopLevelParent(self)
         self.image = None
         
-    def DisplayImage(self):
-        """Display a scaled bitmap centered on the canvas"""
-        self.ClearAll()
-        self.imageheight = self.frame.image.GetHeight()
-        self.bg = self.AddScaledBitmap(self.frame.image,(0,0),
-                                       Height=self.imageheight, Position="cc")
-        self.ZoomToBB(self.bg.BoundingBox)
-    
     def RefreshBackground(self):
         """Draw the background image"""
         # since floatcanvas doesnt resize bitmaps with antialias,
