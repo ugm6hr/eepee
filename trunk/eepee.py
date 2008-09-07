@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 from __future__ import division
-import os, sys
-import wx,Image
+import os, sys, copy
+import wx 
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
+import Image
 from geticons import getBitmap
 
 #------------------------------------------------------------------------------#
@@ -140,12 +141,12 @@ class MyFrame(wx.Frame):
     
     def OnSize(self, event):
         self.splitter.SetSashPosition(self.GetSize()[0] - 120)
-        if self.image:
+        if self.canvas.image:
             self._BGchanged = True
         self.Refresh()
         
     def OnSplitReposition(self, event):
-        if self.image:
+        if self.canvas.image:
             self._BGchanged = True
         self.Refresh()
         
@@ -154,20 +155,21 @@ class MyFrame(wx.Frame):
         dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=self.accepted_formats)
         if dlg.ShowModal() == wx.ID_OK:
             self.filepath = dlg.GetPath()
-            try:
-                #open using PIL and resize image with antialias
-                size = self.splitter.GetSize()
-                
-                pil_image = Image.open(self.filepath,'r')
-                pil_image = pil_image.resize(size,Image.ANTIALIAS)
-                
-                self.image = apply(wx.EmptyImage, size)
-                self.image.SetData(pil_image.convert("RGB").tostring())      
-                
-                self.canvas.DisplayImage()
-            except:
+            #try:
+            # 
+            size = tuple([int(dim*0.8) for dim in self.splitter.GetSize()])
+            
+            self.canvas.image = Image.open(self.filepath,'r')
+            #pil_image.thumbnail(size,Image.ANTIALIAS)
+            #
+            #self.image = apply(wx.EmptyImage, pil_image.size)
+            #self.image.SetData(pil_image.convert("RGB").tostring())      
+            
+            self.canvas.RefreshBackground()
+            #self.canvas.DisplayImage()
+            #except:
                 #TODO: Handle different exceptions
-                self.DisplayError("Could not load file")
+             #   self.DisplayError("Error: %s%s" %(sys.exc_info()[0], sys.exc_info()[1] ))
             
         else:
             return
@@ -213,7 +215,8 @@ class MyFrame(wx.Frame):
         
     def RefreshDrawing(self, event):
         if self._BGchanged:
-            self.canvas.DrawBackground()
+            #self.canvas.DrawBackground()
+            self.canvas.RefreshBackground()
             self._BGchanged = False
             
         if self._FGchanged:
@@ -233,7 +236,7 @@ class MyFrame(wx.Frame):
         self.timeout += 1
         if self.timeout == 25:
             self.statusbar.SetBackgroundColour(self.defaultSBcolor)#'#E0E2EB')
-            self.statusbar.SetStatusText('')
+            #self.statusbar.SetStatusText('')
             self.statusbar.Refresh()
             self.timer.Stop()
             self.timeout = 0
@@ -244,6 +247,7 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
     def __init__(self, parent):
         FloatCanvas.FloatCanvas.__init__(self, parent, Debug = 0)
         self.frame = wx.GetTopLevelParent(self)
+        self.image = None
         
     def DisplayImage(self):
         """Display a scaled bitmap centered on the canvas"""
@@ -253,9 +257,37 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
                                        Height=self.imageheight, Position="cc")
         self.ZoomToBB(self.bg.BoundingBox)
     
-    def DrawBackground(self):
+    def RefreshBackground(self):
+        """Draw the background image"""
+        # since floatcanvas doesnt resize bitmaps with antialias,
+        # all the resizing is done with PIL
+        self.ScaleImage()
+            
+        # convert the PIL image into a wx image                
+        self.displayimage = apply(wx.EmptyImage, self.resizedimage.size)
+        self.displayimage.SetData(self.resizedimage.convert("RGB").tostring())
+        
+        # draw background with scaled bitmap centered at 0,0        
+        self.ClearAll()
+        self.bg = self.AddScaledBitmap(self.displayimage,(0,0),
+                                       Height=1000, Position="cc")
         self.ZoomToBB(self.bg.BoundingBox)
         
+    def ScaleImage(self):
+        """Resize image to best fit canvas size while preserving aspect ratio"""
+        imagewidth, imageheight = self.image.size
+        canvaswidth, canvasheight = self.GetSize()
+        
+        # What drives the scaling - height or width
+        if imagewidth / imageheight > canvaswidth / canvasheight:
+            self.scalingvalue = canvaswidth / imagewidth
+        else:
+            self.scalingvalue = canvasheight / imageheight
+        
+        # resize
+        self.resizedimage = self.image.resize((int(imagewidth*self.scalingvalue)
+                                          , int(imageheight*self.scalingvalue))
+                                          , Image.ANTIALIAS)
 
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
