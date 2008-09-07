@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division
-import os, sys, copy
+import os, sys
 import wx 
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 import Image
@@ -8,8 +8,9 @@ from geticons import getBitmap
 
 #------------------------------------------------------------------------------#
 ID_OPEN     =   wx.NewId() ;   ID_UNSPLIT = wx.NewId()
-ID_SAVE     =   wx.NewId()
-ID_EXIT     =   wx.NewId()
+ID_SAVE     =   wx.NewId() ;   ID_ZOOMIN = wx.NewId()
+ID_EXIT     =   wx.NewId()  ;  ID_ZOOMOUT = wx.NewId()
+ID_ZOOMFIT= wx.NewId()
 #-------------------------------------------------------------------------------
 class MyFrame(wx.Frame):
     """The outer frame"""
@@ -51,6 +52,20 @@ class MyFrame(wx.Frame):
                                   , longHelp='Exit the application')
         
         self.toolbar.AddSeparator()
+        self.toolbar.AddLabelTool(ID_ZOOMOUT, 'Zoom out',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Zoom out')
+        self.toolbar.AddLabelTool(ID_ZOOMFIT, 'Fit',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Zoom to fit')
+        self.toolbar.AddLabelTool(ID_ZOOMIN, 'Zoom in',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Zoom in') 
+        
+        self.toolbar.AddSeparator()
         self.toolbar.AddCheckLabelTool(ID_UNSPLIT, 'Toggle sidepanel',
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
@@ -71,19 +86,14 @@ class MyFrame(wx.Frame):
         
         self.nb = wx.Notebook(self.notebookpanel) # will be a panel later
         self.listbox = wx.ListBox(self.nb, -1)
-        #self.listbox.Show(True)
         self.notepad = wx.TextCtrl(self.nb, -1)
         self.nb.AddPage(self.listbox, "Playlist")
         self.nb.AddPage(self.notepad, "Notes")
         
         #---- All the sizers --------------------------------------
         notebooksizer = wx.BoxSizer()
-        notebooksizer.Add(self.nb, 1, wx.EXPAND)
+        notebooksizer.Add(self.nb, 1, wx.EXPAND, 5)
         self.notebookpanel.SetSizer(notebooksizer)
-        
-        #listboxpanelsizer = wx.BoxSizer()
-        #listboxpanelsizer.Add(self.listbox, 1, wx.ALL|wx.EXPAND, 0)
-        #self.listboxpanel.SetSizer(listboxpanelsizer)
                 
         framesizer = wx.BoxSizer()
         framesizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
@@ -104,6 +114,10 @@ class MyFrame(wx.Frame):
         #-------- Bindings ----------------------------------------------------
         wx.EVT_MENU(self,  ID_OPEN, self.OnOpen)
         wx.EVT_MENU(self,  ID_SAVE, self.OnSave)
+        
+        wx.EVT_MENU(self, ID_ZOOMOUT, self.ZoomOut)
+        wx.EVT_MENU(self, ID_ZOOMFIT, self.ZoomFit)
+        wx.EVT_MENU(self, ID_ZOOMIN, self.ZoomIn)
         
         wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
         
@@ -135,11 +149,26 @@ class MyFrame(wx.Frame):
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
         
         self._BGchanged = True
-    
+        
+    # The zoom changes use only floatcanvas's zoom,
+    # so are not antialiased.
+    # A better implementation will be to resize the image with
+    # PIL
+    def ZoomOut(self, type):
+        """Zoom into the bg"""
+        self.canvas.Zoom(0.9)
+        
+    def ZoomFit(self, type):
+        """Zoom into the bg"""
+        self.canvas.ZoomToBB()
+        
+    def ZoomIn(self, type):
+        """Zoom into the bg"""
+        self.canvas.Zoom(1.1)    
+            
     def OnExit(self, event):
         """Exit the application"""
         sys.exit()
-    
     
     def OnSize(self, event):
         self.splitter.SetSashPosition(self.GetSize()[0] - 120)
@@ -160,15 +189,8 @@ class MyFrame(wx.Frame):
             #try:
             # 
             size = tuple([int(dim*0.8) for dim in self.splitter.GetSize()])
-            
             self.canvas.image = Image.open(self.filepath,'r')
-            #pil_image.thumbnail(size,Image.ANTIALIAS)
-            #
-            #self.image = apply(wx.EmptyImage, pil_image.size)
-            #self.image.SetData(pil_image.convert("RGB").tostring())      
-            
             self.canvas.RefreshBackground()
-            #self.canvas.DisplayImage()
             #except:
                 #TODO: Handle different exceptions
              #   self.DisplayError("Error: %s%s" %(sys.exc_info()[0], sys.exc_info()[1] ))
@@ -238,7 +260,6 @@ class MyFrame(wx.Frame):
         self.timeout += 1
         if self.timeout == 25:
             self.statusbar.SetBackgroundColour(self.defaultSBcolor)#'#E0E2EB')
-            #self.statusbar.SetStatusText('')
             self.statusbar.Refresh()
             self.timer.Stop()
             self.timeout = 0
