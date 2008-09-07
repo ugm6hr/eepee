@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 import os, sys
-import wx
+import wx,Image
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 from geticons import getBitmap
 
@@ -150,15 +150,23 @@ class MyFrame(wx.Frame):
         self.Refresh()
         
     def OnOpen(self, event):
-        """Open a file, load and display it"""
+        """Open a file, load and display it"""        
         dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=self.accepted_formats)
         if dlg.ShowModal() == wx.ID_OK:
             self.filepath = dlg.GetPath()
             try:
-                self.image = wx.Image(self.filepath)
+                #open using PIL and resize image with antialias
+                size = self.splitter.GetSize()
+                
+                pil_image = Image.open(self.filepath,'r')
+                pil_image = pil_image.resize(size,Image.ANTIALIAS)
+                
+                self.image = apply(wx.EmptyImage, size)
+                self.image.SetData(pil_image.convert("RGB").tostring())      
+                
                 self.canvas.DisplayImage()
             except:
-                # TODO: Handle different exceptions
+                #TODO: Handle different exceptions
                 self.DisplayError("Could not load file")
             
         else:
