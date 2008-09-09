@@ -10,7 +10,10 @@ from geticons import getBitmap
 ID_OPEN     =   wx.NewId() ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId() ;   ID_ZOOMIN = wx.NewId()
 ID_EXIT     =   wx.NewId()  ;  ID_ZOOMOUT = wx.NewId()
-ID_ZOOMFIT= wx.NewId()
+ID_ZOOMFIT  =   wx.NewId()
+ID_ROTATERIGHT = wx.NewId()
+ID_ROTATELEFT = wx.NewId()
+
 #-------------------------------------------------------------------------------
 class MyFrame(wx.Frame):
     """The outer frame"""
@@ -71,11 +74,25 @@ class MyFrame(wx.Frame):
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Toggle sidepanel')
         
+        self.toolbar.AddSeparator()
+        self.toolbar.AddCheckLabelTool(ID_ROTATERIGHT, 'Rotate right',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Rotate right')
+        self.toolbar.AddCheckLabelTool(ID_ROTATELEFT, 'Rotate Left',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Rotate Left')
+        
+        
         self.toolbar.Realize()
         
         #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
-        self.splitter = wx.SplitterWindow(self, style=wx.SP_3D)
+        ## basepanel contains the splitter  
+        self.basepanel = wx.Panel(self, style=wx.SUNKEN_BORDER)
+        
+        self.splitter = wx.SplitterWindow(self.basepanel, style=wx.SP_3D)
         self.splitter.SetMinimumPaneSize(10)
         
         # The windows inside the splitter are a
@@ -92,11 +109,15 @@ class MyFrame(wx.Frame):
         
         #---- All the sizers --------------------------------------
         notebooksizer = wx.BoxSizer()
-        notebooksizer.Add(self.nb, 1, wx.EXPAND, 5)
+        notebooksizer.Add(self.nb, 1, wx.EXPAND, 0)
         self.notebookpanel.SetSizer(notebooksizer)
+        
+        splittersizer = wx.BoxSizer()
+        splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 0)
+        self.basepanel.SetSizer(splittersizer)
                 
         framesizer = wx.BoxSizer()
-        framesizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
+        framesizer.Add(self.basepanel, 1, wx.ALL|wx.EXPAND, 0)
         self.SetSizer(framesizer)
         
         #--------------------------------------------------------
@@ -121,6 +142,9 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self, ID_ZOOMIN, self.ZoomIn)
         
         wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
+        
+        wx.EVT_MENU(self, ID_ROTATELEFT, self.RotateLeft)
+        wx.EVT_MENU(self, ID_ROTATERIGHT, self.RotateRight)
         
         wx.EVT_MENU(self,  ID_EXIT, self.OnExit)
         
@@ -162,6 +186,25 @@ class MyFrame(wx.Frame):
         else:
             pass
     
+    #Rotation of Image
+    def RotateRight(self,event):
+        self.canvas.image = self.canvas.image.transpose(Image.ROTATE_90)
+        self.canvas.RefreshBackground()
+        self._BGchanged = True
+        # keeping count of rotation
+        self.rotation += 1
+        #TODO: what needs to be done to measurement and doodle? 
+        
+    def RotateLeft(self,event):
+        self.canvas.image = self.canvas.image.transpose(Image.ROTATE_270)
+        self.canvas.RefreshBackground()
+        # keeping count of rotation
+        self.rotation -= 1
+        self._BGchanged = True
+        
+        #TODO: what needs to be done to measurement and doodle? 
+            
+        
     # The zoom changes use only floatcanvas's zoom,
     # so are not antialiased.
     # A better implementation will be to resize the image with
@@ -216,6 +259,8 @@ class MyFrame(wx.Frame):
             size = tuple([int(dim*0.8) for dim in self.splitter.GetSize()])
             self.canvas.image = Image.open(self.filepath,'r')
             self.canvas.RefreshBackground()
+            #intialising rotation count to 0
+            self.rotation = 0
             #except:
                 #TODO: Handle different exceptions
              #   self.DisplayError("Error: %s%s" %(sys.exc_info()[0], sys.exc_info()[1] ))
