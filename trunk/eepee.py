@@ -35,7 +35,15 @@ class MyFrame(wx.Frame):
         file_menu.Append(ID_SAVE, "&Save","Save Image")
         file_menu.Append(ID_EXIT, "&Exit","Exit")
    
+        image_menu = wx.Menu()
+        image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
+        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
+        image_menu.Append(ID_ZOOMOUT, "Zoom out", "Zoom out")
+        image_menu.Append(ID_ZOOMFIT, "Zoom to fit", "Zoom to fit")
+        image_menu.Append(ID_ZOOMIN, "Zoom in", "Zoom in")
+        
         MenuBar.Append(file_menu, "&File")
+        MenuBar.Append(image_menu, "&Image")
         
         self.SetMenuBar(MenuBar)
         
@@ -75,11 +83,11 @@ class MyFrame(wx.Frame):
                                   longHelp = 'Toggle sidepanel')
         
         self.toolbar.AddSeparator()
-        self.toolbar.AddCheckLabelTool(ID_ROTATERIGHT, 'Rotate right',
+        self.toolbar.AddLabelTool(ID_ROTATERIGHT, 'Rotate right',
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Rotate right')
-        self.toolbar.AddCheckLabelTool(ID_ROTATELEFT, 'Rotate Left',
+        self.toolbar.AddLabelTool(ID_ROTATELEFT, 'Rotate Left',
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Rotate Left')
@@ -117,7 +125,7 @@ class MyFrame(wx.Frame):
         self.basepanel.SetSizer(splittersizer)
                 
         framesizer = wx.BoxSizer()
-        framesizer.Add(self.basepanel, 1, wx.ALL|wx.EXPAND, 0)
+        framesizer.Add(self.basepanel, 1, wx.ALL|wx.EXPAND, 5)
         self.SetSizer(framesizer)
         
         #--------------------------------------------------------
@@ -140,11 +148,10 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self, ID_ZOOMOUT, self.ZoomOut)
         wx.EVT_MENU(self, ID_ZOOMFIT, self.ZoomFit)
         wx.EVT_MENU(self, ID_ZOOMIN, self.ZoomIn)
+        wx.EVT_MENU(self, ID_ROTATELEFT, self.canvas.RotateLeft)
+        wx.EVT_MENU(self, ID_ROTATERIGHT, self.canvas.RotateRight)
         
         wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
-        
-        wx.EVT_MENU(self, ID_ROTATELEFT, self.RotateLeft)
-        wx.EVT_MENU(self, ID_ROTATERIGHT, self.RotateRight)
         
         wx.EVT_MENU(self,  ID_EXIT, self.OnExit)
         
@@ -186,24 +193,6 @@ class MyFrame(wx.Frame):
         else:
             pass
     
-    #Rotation of Image
-    def RotateRight(self,event):
-        self.canvas.image = self.canvas.image.transpose(Image.ROTATE_90)
-        self.canvas.RefreshBackground()
-        self._BGchanged = True
-        # keeping count of rotation
-        self.rotation += 1
-        #TODO: what needs to be done to measurement and doodle? 
-        
-    def RotateLeft(self,event):
-        self.canvas.image = self.canvas.image.transpose(Image.ROTATE_270)
-        self.canvas.RefreshBackground()
-        # keeping count of rotation
-        self.rotation -= 1
-        self._BGchanged = True
-        
-        #TODO: what needs to be done to measurement and doodle? 
-            
         
     # The zoom changes use only floatcanvas's zoom,
     # so are not antialiased.
@@ -374,6 +363,20 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
                                           , int(imageheight*self.scalingvalue))
                                           , Image.ANTIALIAS)
 
+        #Rotation of Image
+    def RotateRight(self,event):
+        self.image = self.image.transpose(Image.ROTATE_90)
+        self.RefreshBackground()
+        ## keep track of rotation to store
+        self.rotation += 1
+        #TODO: what needs to be done to measurement and doodle? 
+        
+    def RotateLeft(self,event):
+        self.image = self.image.transpose(Image.ROTATE_270)
+        self.RefreshBackground()
+        # keeping count of rotation
+        self.rotation -= 1
+            
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
     def OnInit(self):
