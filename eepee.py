@@ -52,7 +52,7 @@ class MyFrame(wx.Frame):
                                   , longHelp='Exit the application')
         
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_ZOOMOUT, 'Zoom out',
+        self.toolbar.AddCheckLabelTool(ID_ZOOMOUT, 'Zoom out',
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Zoom out')
@@ -60,7 +60,7 @@ class MyFrame(wx.Frame):
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Zoom to fit')
-        self.toolbar.AddLabelTool(ID_ZOOMIN, 'Zoom in',
+        self.toolbar.AddCheckLabelTool(ID_ZOOMIN, 'Zoom in',
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Zoom in') 
@@ -109,6 +109,7 @@ class MyFrame(wx.Frame):
         self.image = None
         self.timer = wx.Timer(self, -1)
         self.timeout = 0
+        self.activetool = None
         self.defaultSBcolor = self.statusbar.GetBackgroundColour()
         
         #-------- Bindings ----------------------------------------------------
@@ -128,6 +129,7 @@ class MyFrame(wx.Frame):
         
         # works only with svn version of floatcanvas
         self.canvas.Bind(FloatCanvas.EVT_MOTION, self.OnMotion) 
+        self.canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.OnLeftUp)
         
         # Redraw canvas background on changing splitter position
         self.Bind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.OnSplitReposition)
@@ -149,22 +151,45 @@ class MyFrame(wx.Frame):
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
         
         self._BGchanged = True
-        
+    
+    def OnLeftUp(self, event):
+        """Handle left click"""
+        x,y = event.GetCoords()
+        if self.activetool == "zoomout":
+            self.canvas.Zoom(0.9, (x,y))
+        elif self.activetool == "zoomin":
+            self.canvas.Zoom(1.1, (x,y))
+        else:
+            pass
+    
     # The zoom changes use only floatcanvas's zoom,
     # so are not antialiased.
     # A better implementation will be to resize the image with
     # PIL
     def ZoomOut(self, type):
         """Zoom into the bg"""
-        self.canvas.Zoom(0.9)
+        if self.activetool == "zoomout":
+            # TODO: change cursor
+            
+            self.activetool = None
+        else:
+            # TODO: reset cursor
+            # TODO: reset zoomout tool
+            self.activetool = "zoomout"
         
     def ZoomFit(self, type):
         """Zoom into the bg"""
+        # TODO: reset zoomout or zoomin tools and cursor 
         self.canvas.ZoomToBB()
         
     def ZoomIn(self, type):
         """Zoom into the bg"""
-        self.canvas.Zoom(1.1, (100,100))    
+        if self.activetool == "zoomin":
+            # TODO: change the cursor
+            self.activetool = None
+        else:
+            # TODO: change the cursor
+            self.activetool = "zoomin"
             
     def OnExit(self, event):
         """Exit the application"""
