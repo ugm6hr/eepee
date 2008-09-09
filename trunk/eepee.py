@@ -164,7 +164,7 @@ class MyFrame(wx.Frame):
         
     def ZoomIn(self, type):
         """Zoom into the bg"""
-        self.canvas.Zoom(1.1)    
+        self.canvas.Zoom(1.1, (100,100))    
             
     def OnExit(self, event):
         """Exit the application"""
