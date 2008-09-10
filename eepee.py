@@ -2,7 +2,7 @@
 from __future__ import division
 import os, sys
 import wx 
-from wx.lib.floatcanvas import NavCanvas, FloatCanvas
+from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Resources, GUIMode
 import Image
 from geticons import getBitmap
 
@@ -64,16 +64,13 @@ class MyFrame(wx.Frame):
         
         self.toolbar.AddSeparator()
         self.toolbar.AddCheckLabelTool(ID_ZOOMOUT, 'Zoom out',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
+                                  wx.Bitmap('icons/zoomout.png'),
                                   longHelp = 'Zoom out')
         self.toolbar.AddLabelTool(ID_ZOOMFIT, 'Fit',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
+                                  wx.Bitmap('icons/zoomfit.png'),
                                   longHelp = 'Zoom to fit')
         self.toolbar.AddCheckLabelTool(ID_ZOOMIN, 'Zoom in',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
+                                  wx.Bitmap('icons/zoomin.png'),
                                   longHelp = 'Zoom in') 
         
         self.toolbar.AddSeparator()
@@ -94,6 +91,15 @@ class MyFrame(wx.Frame):
         
         
         self.toolbar.Realize()
+        
+        #----Custom cursors----------------------------------------------------
+        img = Resources.getMagPlusImage()
+        img.SetOptionInt(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 9)
+        img.SetOptionInt(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 9)
+        self.MagPlusCursor = wx.CursorFromImage(img)
+
+        
+
         
         #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
@@ -127,7 +133,7 @@ class MyFrame(wx.Frame):
         framesizer = wx.BoxSizer()
         framesizer.Add(self.basepanel, 1, wx.ALL|wx.EXPAND, 5)
         self.SetSizer(framesizer)
-        
+
         #--------------------------------------------------------
         self.accepted_formats = 'Supported formats|' + \
                     '*.png;*.PNG;*.tif;*.TIF;' +\
@@ -192,7 +198,6 @@ class MyFrame(wx.Frame):
             self.canvas.Zoom(1.1, (x,y))
         else:
             pass
-    
         
     # The zoom changes use only floatcanvas's zoom,
     # so are not antialiased.
@@ -207,6 +212,8 @@ class MyFrame(wx.Frame):
         else:
             # TODO: reset cursor
             # TODO: reset zoomout tool
+            self.canvas.SetMode(GUIMode.GUIZoomOut())
+            #self.SetCursor(self.MagPlusCursor)
             self.activetool = "zoomout"
         
     def ZoomFit(self, type):
