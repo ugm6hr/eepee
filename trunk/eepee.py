@@ -204,30 +204,32 @@ class MyFrame(wx.Frame):
     # A better implementation will be to resize the image with
     # PIL
     def ZoomOut(self, type):
-        """Zoom into the bg"""
+        """Zoom out of the bg"""
         if self.activetool == "zoomout":
-            # TODO: change cursor
-            
+            self.canvas.SetMode(GUIMode.GUIMouse())
             self.activetool = None
         else:
-            # TODO: reset cursor
-            # TODO: reset zoomout tool
+            # TODO: reset zoomin tool
+            self.toolbar.ToggleTool(ID_ZOOMIN, False)
             self.canvas.SetMode(GUIMode.GUIZoomOut())
-            #self.SetCursor(self.MagPlusCursor)
             self.activetool = "zoomout"
         
     def ZoomFit(self, type):
         """Zoom into the bg"""
-        # TODO: reset zoomout or zoomin tools and cursor 
+        # TODO: reset zoomout or zoomin tools and cursor
+        self.toolbar.ToggleTool(ID_ZOOMIN, False)
+        self.toolbar.ToggleTool(ID_ZOOMOUT, False)
         self.canvas.ZoomToBB()
         
     def ZoomIn(self, type):
         """Zoom into the bg"""
+        self.canvas.SetMode(GUIMode.GUIZoomIn())
         if self.activetool == "zoomin":
-            # TODO: change the cursor
+            self.canvas.SetMode(GUIMode.GUIMouse())
             self.activetool = None
         else:
-            # TODO: change the cursor
+            self.toolbar.ToggleTool(ID_ZOOMOUT, False)
+            self.canvas.SetMode(GUIMode.GUIZoomIn())
             self.activetool = "zoomin"
             
     def OnExit(self, event):
@@ -338,6 +340,10 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
         self.frame = wx.GetTopLevelParent(self)
         self.image = None
         
+        # set scaling limits - otherwise crashes in zooming too much
+        self.MinScale = 0.2
+        self.MaxScale = 4
+        
     def RefreshBackground(self):
         """Draw the background image"""
         # since floatcanvas doesnt resize bitmaps with antialias,
@@ -353,6 +359,8 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
         self.bg = self.AddScaledBitmap(self.displayimage,(0,0),
                                        Height=1000, Position="cc")
         self.ZoomToBB(self.bg.BoundingBox)
+        
+        print self.Scale
         
     def ScaleImage(self):
         """Resize image to best fit canvas size while preserving aspect ratio"""
