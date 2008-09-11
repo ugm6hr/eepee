@@ -105,7 +105,7 @@ class MyFrame(wx.Frame):
         ## SPLITTER - contains drawing panel and playlist
         ## basepanel contains the splitter  
         self.basepanel = wx.Panel(self, style=wx.SUNKEN_BORDER)
-        
+                
         self.splitter = wx.SplitterWindow(self.basepanel, style=wx.SP_3D)
         self.splitter.SetMinimumPaneSize(10)
         
@@ -127,12 +127,10 @@ class MyFrame(wx.Frame):
         self.notebookpanel.SetSizer(notebooksizer)
         
         splittersizer = wx.BoxSizer()
-        splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 0)
+        splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.basepanel.SetSizer(splittersizer)
                 
-        framesizer = wx.BoxSizer()
-        framesizer.Add(self.basepanel, 1, wx.ALL|wx.EXPAND, 5)
-        self.SetSizer(framesizer)
+        
 
         #--------------------------------------------------------
         self.accepted_formats = 'Supported formats|' + \
