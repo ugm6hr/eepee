@@ -205,7 +205,8 @@ class MyFrame(wx.Frame):
     # PIL
     def ZoomOut(self, type):
         """Zoom out of the bg"""
-        self.UnBindAllMouseEvents()
+        print self.activetool
+        print "zoom out "
         if self.activetool == "zoomout":
             self.canvas.SetMode(GUIMode.GUIMouse())
             self.activetool = None
@@ -215,16 +216,16 @@ class MyFrame(wx.Frame):
             self.activetool = "zoomout"
         
     def ZoomFit(self, type):
-        """Zoom into the bg"""
-        self.UnBindAllMouseEvents()
+        """Zoom into the bg"""         
         self.canvas.SetMode(GUIMode.GUIMouse())
         self.toolbar.ToggleTool(ID_ZOOMIN, False)
         self.toolbar.ToggleTool(ID_ZOOMOUT, False)
+        self.activetool = None
         self.canvas.ZoomToBB()
         
     def ZoomIn(self, type):
         """Zoom into the bg"""
-        self.UnBindAllMouseEvents()
+        print self.activetool
         self.canvas.SetMode(GUIMode.GUIZoomIn())
         if self.activetool == "zoomin":
             self.canvas.SetMode(GUIMode.GUIMouse())
@@ -233,23 +234,7 @@ class MyFrame(wx.Frame):
             self.toolbar.ToggleTool(ID_ZOOMOUT, False)
             self.canvas.SetMode(GUIMode.GUIZoomIn())
             self.activetool = "zoomin"
-    
-    def UnBindAllMouseEvents(self):
-        ## Here is how you unbind FloatCanvas mouse events
-        self.canvas.Unbind(FloatCanvas.EVT_LEFT_DOWN)
-        self.canvas.Unbind(FloatCanvas.EVT_LEFT_UP)
-        self.canvas.Unbind(FloatCanvas.EVT_LEFT_DCLICK)
-
-        self.canvas.Unbind(FloatCanvas.EVT_MIDDLE_DOWN)
-        self.canvas.Unbind(FloatCanvas.EVT_MIDDLE_UP)
-        self.canvas.Unbind(FloatCanvas.EVT_MIDDLE_DCLICK)
-
-        self.canvas.Unbind(FloatCanvas.EVT_RIGHT_DOWN)
-        self.canvas.Unbind(FloatCanvas.EVT_RIGHT_UP)
-        self.canvas.Unbind(FloatCanvas.EVT_RIGHT_DCLICK)
-    
-    
-           
+               
     def OnExit(self, event):
         """Exit the application"""
         sys.exit()
