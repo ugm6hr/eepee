@@ -209,14 +209,12 @@ class MyFrame(wx.Frame):
             self.canvas.SetMode(GUIMode.GUIMouse())
             self.activetool = None
         else:
-            # TODO: reset zoomin tool
             self.toolbar.ToggleTool(ID_ZOOMIN, False)
             self.canvas.SetMode(GUIMode.GUIZoomOut())
             self.activetool = "zoomout"
         
     def ZoomFit(self, type):
         """Zoom into the bg"""
-        # TODO: reset zoomout or zoomin tools and cursor
         self.toolbar.ToggleTool(ID_ZOOMIN, False)
         self.toolbar.ToggleTool(ID_ZOOMOUT, False)
         self.canvas.ZoomToBB()
