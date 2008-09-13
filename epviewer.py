@@ -276,8 +276,8 @@ class Doodle():
         self.window.Refresh()
             
 #-----------------------------------------------------------------------
-#The custom window
-class MainWindow(wx.Window):
+# window for displaying image
+class Canvas(wx.Window):
     
     def __init__(self, parent, ID):
         wx.Window.__init__(self, parent, ID, style=wx.SUNKEN_BORDER)
@@ -874,14 +874,14 @@ class MyFrame(wx.Frame):
         self.splitter.Unsplit() #I dont know the size yet
         
         ## Main window
-        self.window = MainWindow(self.imagepanel,-1)
+        self.canvas = Canvas(self.imagepanel,-1)
         self.displayimage = DisplayImage(self) 
         
         ## notepad
         self.notepad2 = Notepad2(self, -1, "Notes")
         
         imagepanelsizer = wx.BoxSizer()
-        imagepanelsizer.Add(self.window, 1, wx.ALL|wx.EXPAND, 10)
+        imagepanelsizer.Add(self.canvas, 1, wx.ALL|wx.EXPAND, 10)
         self.imagepanel.SetSizer(imagepanelsizer)
         
         listboxpanelsizer = wx.BoxSizer()
@@ -892,14 +892,14 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self,  ID_EXIT,    self.OnClose)
         wx.EVT_MENU(self,  ID_CALIPER, self.CaliperStart)
         wx.EVT_MENU(self,  ID_CALIB, self.Calibrate)
-        wx.EVT_MENU(self,  ID_REMOVE, self.window.CaliperRemove)
-        wx.EVT_MENU(self,  ID_STAMP, self.window.CaliperStamp)
+        wx.EVT_MENU(self,  ID_REMOVE, self.canvas.CaliperRemove)
+        wx.EVT_MENU(self,  ID_STAMP, self.canvas.CaliperStamp)
         wx.EVT_MENU(self,  ID_SELECT, self.SelectandDisplayImage)
         wx.EVT_MENU(self,  ID_PREV, self.SelectPrevImage)
         wx.EVT_MENU(self,  ID_NEXT, self.SelectNextImage)
         wx.EVT_MENU(self,  ID_SAVE,   self.displayimage.SaveImage)
-        wx.EVT_MENU(self,  ID_DOODLE,   self.window.start_doodle)
-        wx.EVT_MENU(self,  ID_CLEAR,   self.window.doodle.Clear)
+        wx.EVT_MENU(self,  ID_DOODLE,   self.canvas.start_doodle)
+        wx.EVT_MENU(self,  ID_CLEAR,   self.canvas.doodle.Clear)
         wx.EVT_MENU(self,  ID_NOTE,    self.WriteNotes)
         wx.EVT_MENU(self,  ID_ABOUT,   self.About)
         wx.EVT_MENU(self,  ID_KEYS,    self.ListKeys)
@@ -953,13 +953,13 @@ class MyFrame(wx.Frame):
         self.notepad2.ShowNotepad(event)
     
     def CaliperStart(self,event):
-        self.window.caliperselected = 1
-        self.window.StartLeftcaliper()
+        self.canvas.caliperselected = 1
+        self.canvas.StartLeftcaliper()
         
     def Calibrate(self,event):
-        self.window.caliperselected = 1
-        self.window.calibrateselected = 1
-        self.window.StartLeftcaliper()
+        self.canvas.caliperselected = 1
+        self.canvas.calibrateselected = 1
+        self.canvas.StartLeftcaliper()
 
     def DisplayPlayList(self):
         self.splitter.SplitVertically(self.imagepanel,self.listboxpanel)
@@ -1010,25 +1010,25 @@ class MyFrame(wx.Frame):
             for section in range(4):
                 self.SetStatusText('',section)
                 
-            self.window.caliperselected = 0
-            self.window.calipersonscreen = 0
-            self.window.caliperselectedtomove = 0
-            self.window.calibrateselected = 0
-            self.window.zoomselected = 0
-            self.window.doodleselected = 0
+            self.canvas.caliperselected = 0
+            self.canvas.calipersonscreen = 0
+            self.canvas.caliperselectedtomove = 0
+            self.canvas.calibrateselected = 0
+            self.canvas.zoomselected = 0
+            self.canvas.doodleselected = 0
             self.leftcaliper = None
             self.rightcaliper = None
             self.horizbar = None
-            self.window.doodle.lines = []
-            self.window.stampedcalipers = []
-            self.window.measurement.calibration = None
+            self.canvas.doodle.lines = []
+            self.canvas.stampedcalipers = []
+            self.canvas.measurement.calibration = None
             self.displayimage.data = None
             
     def SaveData(self):
         note = self.notepad2.GetNote()
         if note == '':
             note = None
-        calibration = self.window.measurement.calibration
+        calibration = self.canvas.measurement.calibration
 
         # save only if there is data
         if True in [note != None, calibration != None]:
@@ -1066,9 +1066,9 @@ class MyFrame(wx.Frame):
             self.displayimage.data = None
         
     def SelectandDisplayImage(self,event):
-        self.width, self.height = self.window.GetSize()
-        self.displayimage.windowwidth, self.displayimage.windowheight = \
-                                       self.width, self.height
+        #self.width, self.height = self.canvas.GetSize()
+        #self.displayimage.windowwidth, self.displayimage.windowheight = \
+        #                               self.width, self.height
         
         dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=accepted_formats)
         if dlg.ShowModal() == wx.ID_OK:
@@ -1082,7 +1082,7 @@ class MyFrame(wx.Frame):
         self.BlitSelectedImage()
             
     def BlitSelectedImage(self):
-        dc = wx.ClientDC(self.window)
+        dc = wx.ClientDC(self.canvas)
         dc.Clear()  #clear old image if still there
         memdc = wx.MemoryDC()
         memdc.SelectObject(self.displayimage.bmp)
