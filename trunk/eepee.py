@@ -4,13 +4,14 @@ import os, sys
 import wx 
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Resources, GUIMode
 import Image
+import numpy as N
 from geticons import getBitmap
 
 #------------------------------------------------------------------------------#
 ID_OPEN     =   wx.NewId() ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId() ;   ID_ZOOMIN = wx.NewId()
 ID_EXIT     =   wx.NewId()  ;  ID_ZOOMOUT = wx.NewId()
-ID_ZOOMFIT  =   wx.NewId()
+ID_ZOOMFIT  =   wx.NewId()  ; ID_RUBBERBAND = wx.NewId()
 ID_ROTATERIGHT = wx.NewId()
 ID_ROTATELEFT = wx.NewId()
 
@@ -88,7 +89,10 @@ class MyFrame(wx.Frame):
                                   wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
                                    wx.ART_TOOLBAR),
                                   longHelp = 'Rotate Left')
-        
+        self.toolbar.AddLabelTool(ID_RUBBERBAND, 'Choose frame',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
+                                   wx.ART_TOOLBAR),
+                                  longHelp = 'Choose frame')
         
         self.toolbar.Realize()
         
@@ -154,6 +158,7 @@ class MyFrame(wx.Frame):
         wx.EVT_MENU(self, ID_ZOOMIN, self.ZoomIn)
         wx.EVT_MENU(self, ID_ROTATELEFT, self.canvas.RotateLeft)
         wx.EVT_MENU(self, ID_ROTATERIGHT, self.canvas.RotateRight)
+        wx.EVT_MENU(self, ID_RUBBERBAND, self.ChooseFrame)
         
         wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
         
@@ -203,8 +208,7 @@ class MyFrame(wx.Frame):
     # PIL
     def ZoomOut(self, type):
         """Zoom out of the bg"""
-        print self.activetool
-        print "zoom out "
+        # TODO: Maybe remove the zoomout tool
         if self.activetool == "zoomout":
             self.canvas.SetMode(GUIMode.GUIMouse())
             self.activetool = None
@@ -223,7 +227,6 @@ class MyFrame(wx.Frame):
         
     def ZoomIn(self, type):
         """Zoom into the bg"""
-        print self.activetool
         self.canvas.SetMode(GUIMode.GUIZoomIn())
         if self.activetool == "zoomin":
             self.canvas.SetMode(GUIMode.GUIMouse())
@@ -232,7 +235,10 @@ class MyFrame(wx.Frame):
             self.toolbar.ToggleTool(ID_ZOOMOUT, False)
             self.canvas.SetMode(GUIMode.GUIZoomIn())
             self.activetool = "zoomin"
-               
+
+    def ChooseFrame(self, event):
+        self.canvas.SetMode(GUIRubberBand())
+           
     def OnExit(self, event):
         """Exit the application"""
         sys.exit()
@@ -301,14 +307,12 @@ class MyFrame(wx.Frame):
     
        
     def OnMotion(self, event):
-        #print "moving"
         self.x, self.y = event.Coords
         self.statusbar.SetStatusText("%.2f, %.2f"%tuple(event.Coords))
         #self._FGchanged = True
         
     def RefreshDrawing(self, event):
         if self._BGchanged:
-            #self.canvas.DrawBackground()
             self.canvas.RefreshBackground()
             self._BGchanged = False
             
@@ -392,7 +396,31 @@ class DrawingCanvas(FloatCanvas.FloatCanvas):
         self.RefreshBackground()
         # keeping count of rotation
         self.rotation -= 1
-            
+
+#---------------------------------------------------------------------
+class GUIRubberBand(GUIMode.GUIZoomIn):
+    """A custom GUI mode for drawing rubberband"""
+    def __init__(self, canvas=None):
+        GUIMode.GUIZoomIn.__init__(self, canvas)
+        self.StartRBBox = None
+        self.PrevRBBox = None
+        self.Cursor =  wx.NullCursor
+        
+    def OnLeftUp(self, event):
+        if event.LeftUp() and not self.StartRBBox is None:
+            self.PrevRBBox = None
+            EndRBBox = event.GetPosition()
+            StartRBBox = self.StartRBBox
+            # if mouse has moved less that ten pixels, don't use the box.
+            EndRBBox = self.Canvas.PixelToWorld(EndRBBox)
+            StartRBBox = self.Canvas.PixelToWorld(StartRBBox)
+            BB = N.array(((min(EndRBBox[0],StartRBBox[0]),
+                            min(EndRBBox[1],StartRBBox[1])),
+                        (max(EndRBBox[0],StartRBBox[0]),
+                            max(EndRBBox[1],StartRBBox[1]))),N.float_)
+            #self.Canvas.ZoomToBB(BB)
+    
+          
 #----------------------------------------------------------------------    
 class MyApp(wx.App):
     def OnInit(self):
