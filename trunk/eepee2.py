@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import sys
+import sys, copy
 
 import Image
 import wx
 
+from customrubberband import RubberBand
 #------------------------------------------------------------------------------
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()  ;   #ID_ZOOMIN = wx.NewId()
 ID_EXIT     =   wx.NewId()  ;   #ID_ZOOMOUT = wx.NewId()
-#ID_ZOOMFIT  =   wx.NewId()  ;   #ID_RUBBERBAND = wx.NewId()
+ID_CROP  =   wx.NewId()  ;   #ID_RUBBERBAND = wx.NewId()
 ID_ROTATERIGHT = wx.NewId()
 ID_ROTATELEFT = wx.NewId()
 #------------------------------------------------------------------------------
@@ -55,7 +56,22 @@ class MyFrame(wx.Frame):
         splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.basepanel.SetSizer(splittersizer)
         
-        #-------Menubar-----------------------------------------------------------
+        #------------------------------
+        self._buildMenuBar()
+        self._buildToolBar()
+        self.CreateStatusBar()
+        
+        #-------------------------------------
+        self.Bind(wx.EVT_MENU, self.displayimage.LoadAndDisplayImage, id=ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.displayimage.SaveImage, id=ID_SAVE)
+        self.Bind(wx.EVT_MENU, self.ToggleSplit, id=ID_UNSPLIT)
+        self.Bind(wx.EVT_MENU, self.displayimage.RotateLeft, id=ID_ROTATELEFT)
+        self.Bind(wx.EVT_MENU, self.displayimage.RotateRight, id=ID_ROTATERIGHT)
+        self.Bind(wx.EVT_MENU, self.displayimage.ChooseCropFrame, id=ID_CROP)
+
+    def _buildMenuBar(self):
+        """Build the menu bar"""
         MenuBar = wx.MenuBar()
 
         file_menu = wx.Menu()
@@ -71,28 +87,19 @@ class MyFrame(wx.Frame):
         MenuBar.Append(image_menu, "&Image")
         
         self.SetMenuBar(MenuBar)
-        
-        #----------------------------------------------------------------------
-        ## TOOLBAR
-        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | 
-                                          wx.NO_BORDER | wx.TB_FLAT)
+
+    def _buildToolBar(self):
+        """Build the toolbar"""
+        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL |  wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((22,22))
         
         self.toolbar.AddCheckLabelTool(ID_UNSPLIT, 'Toggle sidepanel',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,  wx.ART_TOOLBAR),
                                   longHelp = 'Toggle sidepanel')
-        
-        #------------------------------
-        self.CreateStatusBar()
-        
-        self.Bind(wx.EVT_MENU, self.displayimage.LoadAndDisplayImage, id=ID_OPEN)
-        self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_EXIT)
-        self.Bind(wx.EVT_MENU, self.displayimage.SaveImage, id=ID_SAVE)
-        self.Bind(wx.EVT_MENU, self.ToggleSplit, id=ID_UNSPLIT)
-        self.Bind(wx.EVT_MENU, self.displayimage.RotateLeft, id=ID_ROTATELEFT)
-        self.Bind(wx.EVT_MENU, self.displayimage.RotateRight, id=ID_ROTATERIGHT)
-    
+        self.toolbar.AddCheckLabelTool(ID_CROP, 'Crop Image',
+                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,  wx.ART_TOOLBAR),
+                                  longHelp = 'Toggle cropping of image')
+
     def InitializeSplitter(self):
         """Initialize sash position"""
         # Do this for the first time when loading first image
@@ -127,20 +134,27 @@ class Canvas(wx.Window):
         wx.Window.__init__(self, parent, -1)
         self.frame = wx.GetTopLevelParent(self)
                 
+        self.rubberband = RubberBand(self)
         # Image height will always be 1000 units unless zoomed in
         self.maxheight = 1000
+        
+        #one tool may be active at any time
+        self.activetool = None
         
         self._BGchanged = False
         
         #self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
+        self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
     
+   
     def OnMotion(self, event):
         pos = event.GetPosition()
-        worldposx = (pos.x-self.xoffset)*self.factor
-        worldposy = (pos.y-self.yoffset)*self.factor
-        self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
+        #worldposx = (pos.x-self.xoffset)*self.factor
+        #worldposy = (pos.y-self.yoffset)*self.factor
+        #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
+        self.frame.SetStatusText("%s,%s" %(pos.x, pos.y))
         
     def OnResize(self, event):
         """canvas resize triggers bgchanged flag so that it will
@@ -153,6 +167,27 @@ class Canvas(wx.Window):
         if self._BGchanged:
             self.DrawBG()
             
+    def OnMouseEvents(self, event):
+        """Handle mouse events depending on active tool"""
+        # ----- Rubberband -------------------------------
+        if self.activetool == "rubberband":
+            if event.LeftUp(): # finished selecting crop extent
+                cropframe = self.rubberband.getCurrentExtent()
+
+                self.rubberband.reset()
+                self.SetCursor(wx.NullCursor)
+                self.activetool = None
+                
+                self.frame.displayimage.CropImage(cropframe, "canvas")
+                
+            else:
+                self.rubberband.handleMouseEvents(event)
+                
+        elif self.activetool == None: #TODO: Move to top
+            if event.Moving():
+                self.OnMotion(event)
+
+            
     def DrawBG(self):
         """Draw the image after resizing to best fit current size"""
         image = self.frame.displayimage.image
@@ -161,13 +196,13 @@ class Canvas(wx.Window):
         
         # What drives the scaling - height or width
         if imagewidth / imageheight > self.width / self.height:
-            scalingvalue = self.width / imagewidth
+            self.scalingvalue = self.width / imagewidth
         else:
-            scalingvalue = self.height / imageheight
+            self.scalingvalue = self.height / imageheight
         
         # resize with antialiasing
-        resized_width =  int(imagewidth * scalingvalue)
-        resized_height = int(imageheight * scalingvalue)
+        resized_width =  int(imagewidth * self.scalingvalue)
+        resized_height = int(imageheight * self.scalingvalue)
         self.resizedimage = image.resize((resized_width, resized_height)
                                              , Image.ANTIALIAS)
         
@@ -209,6 +244,9 @@ class DisplayImage():
         
         self.image = None # will be loaded
 
+        # image cropping can be toggled
+        # if prev crop info is stored, this will be true
+        self.iscropped = False
         
         # conversion factor to convert from px to world coords
         # = 1000 / image height in px
@@ -226,13 +264,17 @@ class DisplayImage():
             return
         
         try:        
-            self.image = Image.open(filepath, 'r')
+            self.uncropped_image = Image.open(filepath, 'r')
         except:
             pass # TODO: catch errors and display error message
         
+        if self.iscropped:
+            self.image = self.CropImage(self.cropframe, "image")
+        else:
+            self.image = self.uncropped_image
+        
         self.frame.InitializeSplitter()
         self.canvas._BGchanged = True
-        
     
     def SaveImage(self, event):
         """
@@ -297,6 +339,33 @@ class DisplayImage():
         self.image = self.image.transpose(Image.ROTATE_270)
         self.rotation -= 1
         self.canvas.resetFG() # since coords have changed
+        self.canvas._BGchanged = True
+        
+    def ChooseCropFrame(self, event):
+        """Choose the frame to crop image using a rubberband"""
+        if not self.iscropped:
+            self.canvas.activetool = "rubberband"
+        
+        else:
+            self.image = self.uncropped_image
+            self.iscropped = False
+            self.canvas._BGchanged = True
+        
+    def CropImage(self, cropframe, coord_reference):
+        """Crop the image.
+        crop frame is the outer frame.
+        This can be in reference to the image or the canvas"""
+        # convert coords to refer to image
+        # for frame coords derived from canvas, first correct for image offset on canvas
+        # then correct for scaling value so that coords apply to original image
+        if coord_reference == "canvas":
+            cropframe = (cropframe[0] - self.canvas.xoffset, cropframe[1] - self.canvas.yoffset,
+                                  cropframe[2] - self.canvas.xoffset, cropframe[3] - self.canvas.yoffset)
+            cropframe = tuple(coord/self.canvas.scalingvalue for coord in cropframe)
+            
+        self.image = self.uncropped_image.crop(cropframe)
+
+        self.iscropped = True
         self.canvas._BGchanged = True
         
 #------------------------------------------------------------------------------        
