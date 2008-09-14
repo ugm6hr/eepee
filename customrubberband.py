@@ -11,10 +11,6 @@ Implements a 'rubberband' to select the zoomframe
 
 import  wx
 
-#
-# Some miscellaneous mathematical and geometrical functions
-#
-
 def isNegative(aNumber):
     """
     x < 0:   1
@@ -101,7 +97,6 @@ def getCursorPosition(x, y, box, thickness=1):
         p = 7
 
     return p
-
 
 
 
@@ -201,6 +196,7 @@ class RubberBand:
             self.hasLetUp = 1
             self.currentlyMoving = None
             self.__normalizeBox()
+            print 'leftup!'
 
         elif event.Moving() and not event.Dragging():
             # Simple mouse movement event
