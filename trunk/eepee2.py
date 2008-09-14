@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import sys, copy
+import sys, os
 
 import Image
 import wx
@@ -11,10 +11,19 @@ from geticons import getBitmap
 #------------------------------------------------------------------------------
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()  ;   #ID_ZOOMIN = wx.NewId()
-ID_EXIT     =   wx.NewId()  ;   #ID_ZOOMOUT = wx.NewId()
+ID_QUIT     =   wx.NewId()  ;   #ID_ZOOMOUT = wx.NewId()
 ID_CROP  =   wx.NewId()  ;   #ID_RUBBERBAND = wx.NewId()
 ID_ROTATERIGHT = wx.NewId()
 ID_ROTATELEFT = wx.NewId()
+
+#last png is for default save ext
+accepted_formats = ['png', 'tiff', 'jpg', 'bmp', 'png'] 
+accepted_wildcards = 'PNG|*.png|TIF|*.tif;*.tiff|' +\
+                     'JPG|*.jpg;*.jpeg|BMP|*.bmp|' +\
+                     'All files|*.*'
+image_handlers = [wx.BITMAP_TYPE_PNG, wx.BITMAP_TYPE_TIF,
+                  wx.BITMAP_TYPE_JPEG, wx.BITMAP_TYPE_BMP, wx.BITMAP_TYPE_PNG]
+                  
 #------------------------------------------------------------------------------
 class MyFrame(wx.Frame):
     def __init__(self, parent, title):
@@ -64,7 +73,7 @@ class MyFrame(wx.Frame):
         
         #-------------------------------------
         self.Bind(wx.EVT_MENU, self.displayimage.LoadAndDisplayImage, id=ID_OPEN)
-        self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_QUIT)
         self.Bind(wx.EVT_MENU, self.displayimage.SaveImage, id=ID_SAVE)
         self.Bind(wx.EVT_MENU, self.ToggleSplit, id=ID_UNSPLIT)
         self.Bind(wx.EVT_MENU, self.displayimage.RotateLeft, id=ID_ROTATELEFT)
@@ -78,7 +87,7 @@ class MyFrame(wx.Frame):
         file_menu = wx.Menu()
         file_menu.Append(ID_OPEN, "&Open","Open file")
         file_menu.Append(ID_SAVE, "&Save","Save Image")
-        file_menu.Append(ID_EXIT, "&Exit","Exit")
+        file_menu.Append(ID_QUIT, "&Exit","Exit")
    
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
@@ -95,6 +104,8 @@ class MyFrame(wx.Frame):
         # (checktool?, id, "short help", "long help", "getimage name")
         tools = [
             (False, ID_OPEN, "Open", "Open file", "open"),
+            (False, ID_SAVE, "Save", "Save file", "save"),
+            (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "open"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "open")
             ]
@@ -108,6 +119,8 @@ class MyFrame(wx.Frame):
                 self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
             else:
                 self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
+                
+        self.toolbar.Realize()
 
     def InitializeSplitter(self):
         """Initialize sash position"""
@@ -266,7 +279,9 @@ class DisplayImage():
         
     def LoadAndDisplayImage(self, event):
         """Load a new image and display"""
-        dlg = wx.FileDialog(self.frame ,style=wx.OPEN)
+        dlg = wx.FileDialog(self.frame ,style=wx.OPEN,
+                            wildcard=accepted_wildcards)
+        dlg.SetFilterIndex(4) #set 'all files' as default
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
         else:
@@ -301,38 +316,26 @@ class DisplayImage():
         #convert dc to bitmap
         memdc = wx.MemoryDC()
         memdc.SelectObject(savebmp)
-        memdc.Blit(0,0,self.width,self.height,context,0,0)
+        memdc.Blit(0,0,self.canvas.width,self.canvas.height,context,0,0)
         memdc.SelectObject(wx.NullBitmap)
 
         dlg = wx.FileDialog(self.frame, "Save image as...", os.getcwd(),
                             style=wx.SAVE | wx.OVERWRITE_PROMPT,
-                            wildcard=accepted_formats)
+                            wildcard=accepted_wildcards)
         if dlg.ShowModal() == wx.ID_OK:
             savefilename = dlg.GetPath()
+            filter_index = dlg.GetFilterIndex()
             dlg.Destroy()
         else:
             dlg.Destroy()
             return
         
-        # if not a valid extension (or if no extension), save as png
-        # gif not supported for now
+        # format to save is dependent on selected wildcard, default to png
+        savefilename += accepted_formats[filter_index]
         try:
-            extension  = os.path.splitext(savefilename)[1].lower()
-            if extension in ['.tif', '.tiff']:
-                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_TIF)
-            elif extension in ['.jpg', '.jpeg']:
-                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_JPEG)
-            elif extension == '.bmp':
-                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_BMP)
-            else:
-                savefilename = os.path.splitext(savefilename)[0] + '.png'
-                succeeded = savebmp.SaveFile(savefilename, wx.BITMAP_TYPE_PNG)
-            
-            if not succeeded:
-                raise Error, "Unable to save file"
-
+            savebmp.SaveFile(savefilename, image_handlers[filter_index])
         except:
-            print 'Error' # TODO: Catch specific errors and handle meaningfully
+            pass # TODO:
     
     def RotateLeft(self, event):
         """Rotate the image 90 deg counterclockwise.
