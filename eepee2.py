@@ -7,6 +7,7 @@ import Image
 import wx
 
 from customrubberband import RubberBand
+from geticons import getBitmap
 #------------------------------------------------------------------------------
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()  ;   #ID_ZOOMIN = wx.NewId()
@@ -90,15 +91,23 @@ class MyFrame(wx.Frame):
 
     def _buildToolBar(self):
         """Build the toolbar"""
+        ## list of tools - can be made editable in preferences
+        # (checktool?, id, "short help", "long help", "getimage name")
+        tools = [
+            (False, ID_OPEN, "Open", "Open file", "open"),
+            (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "open"),
+            (True,  ID_CROP, "Crop image", "Toggle cropping of image", "open")
+            ]
+        
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL |  wx.NO_BORDER | wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((22,22))
-        
-        self.toolbar.AddCheckLabelTool(ID_UNSPLIT, 'Toggle sidepanel',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,  wx.ART_TOOLBAR),
-                                  longHelp = 'Toggle sidepanel')
-        self.toolbar.AddCheckLabelTool(ID_CROP, 'Crop Image',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,  wx.ART_TOOLBAR),
-                                  longHelp = 'Toggle cropping of image')
+
+        for tool in tools:
+            checktool, id, shelp, lhelp, bmp = tool
+            if checktool:
+                self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
+            else:
+                self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
 
     def InitializeSplitter(self):
         """Initialize sash position"""
@@ -361,7 +370,7 @@ class DisplayImage():
         if coord_reference == "canvas":
             cropframe = (cropframe[0] - self.canvas.xoffset, cropframe[1] - self.canvas.yoffset,
                                   cropframe[2] - self.canvas.xoffset, cropframe[3] - self.canvas.yoffset)
-            cropframe = tuple(coord/self.canvas.scalingvalue for coord in cropframe)
+            cropframe = tuple(int(coord/self.canvas.scalingvalue) for coord in cropframe)
             
         self.image = self.uncropped_image.crop(cropframe)
 
