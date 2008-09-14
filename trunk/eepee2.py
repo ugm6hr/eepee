@@ -106,8 +106,8 @@ class MyFrame(wx.Frame):
             (False, ID_OPEN, "Open", "Open file", "open"),
             (False, ID_SAVE, "Save", "Save file", "save"),
             (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
-            (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "open"),
-            (True,  ID_CROP, "Crop image", "Toggle cropping of image", "open")
+            (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
+            (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL |  wx.NO_BORDER | wx.TB_FLAT)
