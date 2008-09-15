@@ -10,7 +10,7 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 #------------------------------------------------------------------------------
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
-ID_SAVE     =   wx.NewId()  ;   #ID_ZOOMIN = wx.NewId()
+ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
 ID_QUIT     =   wx.NewId()  ;   #ID_ZOOMOUT = wx.NewId()
 ID_CROP  =   wx.NewId()  ;   #ID_RUBBERBAND = wx.NewId()
 ID_ROTATERIGHT = wx.NewId()
@@ -79,6 +79,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.displayimage.RotateLeft, id=ID_ROTATELEFT)
         self.Bind(wx.EVT_MENU, self.displayimage.RotateRight, id=ID_ROTATERIGHT)
         self.Bind(wx.EVT_MENU, self.displayimage.ChooseCropFrame, id=ID_CROP)
+        self.Bind(wx.EVT_MENU, self.canvas.NewCaliper, id=ID_CALIPER)
 
     def _buildMenuBar(self):
         """Build the menu bar"""
@@ -106,6 +107,7 @@ class MyFrame(wx.Frame):
             (False, ID_OPEN, "Open", "Open file", "open"),
             (False, ID_SAVE, "Save", "Save file", "save"),
             (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
+            (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
@@ -164,7 +166,11 @@ class Canvas(wx.Window):
         #one tool may be active at any time
         self.activetool = None
         
+        # caliper list is a list of all calipers
+        self.caliperlist = []
+        
         self._BGchanged = False
+        self._FGchanged = False
         
         #self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_SIZE, self.OnResize)
@@ -173,10 +179,12 @@ class Canvas(wx.Window):
 
     def OnMotion(self, event):
         pos = event.GetPosition()
+        worldx, worldy = (self.PixelsToWorld(pos.x, 'xaxis'),
+                          self.PixelsToWorld(pos.y, 'yaxis'))
         #worldposx = (pos.x-self.xoffset)*self.factor
         #worldposy = (pos.y-self.yoffset)*self.factor
         #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
-        self.frame.SetStatusText("%s,%s" %(pos.x, pos.y))
+        self.frame.SetStatusText("%s,%s  %s,%s" %(pos.x, pos.y, worldx, worldy))
         
     def OnResize(self, event):
         """canvas resize triggers bgchanged flag so that it will
@@ -188,6 +196,9 @@ class Canvas(wx.Window):
         """Redraw if there is a change"""
         if self._BGchanged:
             self.DrawBG()
+            
+        if self._FGchanged:
+            self.DrawFG()
             
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
@@ -205,11 +216,32 @@ class Canvas(wx.Window):
             else:
                 self.rubberband.handleMouseEvents(event)
                 
+        if self.activetool == "caliper":
+            # the active caliper is the last one on the list
+            self.caliperlist[-1].handleMouseEvents(event)
+                
         elif self.activetool == None: #TODO: Move to top
             if event.Moving():
                 self.OnMotion(event)
 
-            
+    def PixelsToWorld(self, coord, axis):
+        """convert from pixels to world units.
+         coord is a single value and axis denoted
+         axis to which it belongs (x or y)"""
+        if axis == 'xaxis':
+            return round((coord - self.xoffset) * self.factor)
+        elif axis == 'yaxis':
+            return round((coord - self.yoffset) * self.factor)
+    
+    def WorldToPixels(self, coord, axis):
+        """convert from world units to pixels.
+         coord is a single value and axis denoted
+         axis to which it belongs (x or y)"""
+        if axis == 'xaxis':
+            return (coord / self.factor) + self.xoffset
+        elif axis == 'yaxis':
+            return (coord / self.factor) + self.yoffset
+        
     def DrawBG(self):
         """Draw the image after resizing to best fit current size"""
         image = self.frame.displayimage.image
@@ -223,27 +255,40 @@ class Canvas(wx.Window):
             self.scalingvalue = self.height / imageheight
         
         # resize with antialiasing
-        resized_width =  int(imagewidth * self.scalingvalue)
-        resized_height = int(imageheight * self.scalingvalue)
-        self.resizedimage = image.resize((resized_width, resized_height)
+        self.resized_width =  int(imagewidth * self.scalingvalue)
+        self.resized_height = int(imageheight * self.scalingvalue)
+        self.resizedimage = image.resize((self.resized_width, self.resized_height)
                                              , Image.ANTIALIAS)
         
         # factor chosen so that image ht = 1000 U
-        self.factor = self.maxheight / resized_height
+        self.factor = self.maxheight / self.resized_height
         
         # blit the image centerd in x and y axes
         self.bmp = self.ImageToBitmap(self.resizedimage)
         dc = wx.ClientDC(self)
         dc.Clear()  #clear old image if still there
-        memdc = wx.MemoryDC()
-        memdc.SelectObject(self.bmp)
+        self.imagedc = wx.MemoryDC()
+        self.imagedc.SelectObject(self.bmp)
         
-        self.xoffset = (self.width-resized_width)/2
-        self.yoffset = (self.height-resized_height)/2
+        self.xoffset = (self.width-self.resized_width)/2
+        self.yoffset = (self.height-self.resized_height)/2
         dc.Blit(self.xoffset, self.yoffset,
-                  resized_width, resized_height, memdc, 0, 0)
+                  self.resized_width, self.resized_height, self.imagedc, 0, 0)
         
         self._BGchanged = False
+        
+        
+    def DrawFG(self):
+        """Redraw the foreground elements"""
+        #self.DrawBG() # will later avoid a full bg redraw
+        dc = wx.ClientDC(self)
+        dc.Blit(self.xoffset, self.yoffset,
+                  self.resized_width, self.resized_height, self.imagedc, 0, 0)
+        
+        for caliper in self.caliperlist:
+            caliper.draw()
+            
+        self._FGchanged = False
     
     def resetFG(self):
         """When the coords are not preserved, reset all
@@ -256,6 +301,10 @@ class Canvas(wx.Window):
         bmp = newimage.ConvertToBitmap()
         return bmp
     
+    def NewCaliper(self, event):
+        """Start a new caliper"""
+        self.caliperlist.append(Caliper(self))
+        self.activetool = "caliper"
 #------------------------------------------------------------------------------
 
 class DisplayImage():
@@ -379,6 +428,63 @@ class DisplayImage():
 
         self.iscropped = True
         self.canvas._BGchanged = True
+
+#------------------------------------------------------------------------------
+class Caliper():
+    """Caliper is a tool with two vertical lines connected by a bridge"""
+    def __init__(self, canvas):
+        self.canvas = canvas
+        # coordinates are in 'world coordinates'
+        #          x1,y1    x2y1
+        #           |       |
+        #     x1,y2 |_______| x2,y2
+        #           |       |
+        #         x1,y3     x2,y3
+        #
+        
+        self.x1, self.x2 = 0, 0
+        self.y1, self.y2, self.y3 = 0, 0, 0
+        
+        self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
+        
+        # 1 - positioning first caliperleg, 2 - positioning second caliperleg
+        # 3 - positioned both caliperlegs, 4 - repositioning whole caliper
+        # cycle 1 -> 2 -> 3 -> 2 or 4 -> 3
+        self.state = 1
+        
+    def draw(self):
+        """draw the caliper on the canvas"""
+        dc = wx.ClientDC(self.canvas)
+        dc.BeginDrawing()
+        dc.SetPen(self.pen)
+        
+        # convert to pixels for drawing
+        x1 = self.canvas.WorldToPixels(self.x1, "xaxis")
+        x2 = self.canvas.WorldToPixels(self.x2, "xaxis")
+        y1 = self.canvas.WorldToPixels(self.y1, "yaxis")
+        y2 = self.canvas.WorldToPixels(self.y2, "yaxis")
+        y3 = self.canvas.WorldToPixels(self.y3, "yaxis")
+        
+        # draw the lines
+        dc.DrawLine(x1, y1, x1, y3) # left vertical
+        dc.DrawLine(x2, y1, x2, y3) # right vertical
+        dc.DrawLine(x1, y2, x2, y2) # horiz
+        
+        dc.EndDrawing()
+        
+    def handleMouseEvents(self, event):
+        """Mouse event handler when caliper is the active tool"""
+        # get mouse position in world coords
+        pos = event.GetPosition()
+        mousex, mousey = (self.canvas.PixelsToWorld(pos.x, 'xaxis'),
+                          self.canvas.PixelsToWorld(pos.y, 'yaxis'))
+        # beginning - this is first caliper being positioned
+        if event.Moving() and self.state == 1:
+            self.x1 = self.x2 = mousex
+            self.y1 = self.y2 = 0 #self.canvas.yoffset
+            self.y3 = self.canvas.maxheight#PixelsToWorld(
+                      #self.canvas.height - self.canvas.yoffset, 'yaxis')
+            self.canvas._FGchanged = True
         
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
