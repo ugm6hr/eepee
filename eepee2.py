@@ -163,6 +163,9 @@ class Canvas(wx.Window):
         # Image height will always be 1000 units unless zoomed in
         self.maxheight = 1000
         
+        # calibration  =   milliseconds / world_units
+        self.calibration = 0  #0 means uncalibrated
+        
         #one tool may be active at any time
         self.activetool = None
         
@@ -279,10 +282,10 @@ class Canvas(wx.Window):
         
         self._BGchanged = False
         
-        
     def DrawFG(self):
         """Redraw the foreground elements"""
         dc = wx.ClientDC(self)
+        dc.Clear()
         dc.Blit(self.xoffset, self.yoffset,
                   self.resized_width, self.resized_height, self.imagedc, 0, 0)
         
@@ -470,6 +473,8 @@ class Caliper():
         # range from mouse to be hittable
         self.hitrange = 10
         self.was_hittable = False # true if it becomes hittable
+        # distance between legs
+        self.measurement = 0
         
     def draw(self):
         """draw the caliper on the canvas"""
@@ -488,6 +493,18 @@ class Caliper():
         dc.DrawLine(x1, y1, x1, y3) # left vertical
         dc.DrawLine(x2, y1, x2, y3) # right vertical
         dc.DrawLine(x1, y2, x2, y2) # horiz
+        
+        # write measurement
+        if self.state > 1:
+            self.measurement = abs(self.x2 - self.x1) #world coords
+            measurement_units = 'units'
+            if self.canvas.calibration > 0:
+                self.measurement *= self.canvas.calibration
+                measurement_units = 'ms'
+                
+            dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
+                       self.canvas.WorldToPixels((self.x1 + self.x2)/2, 'xaxis'),
+                       self.canvas.WorldToPixels(self.y2 - 40, 'xaxis'))
         
         dc.EndDrawing()
         
@@ -558,6 +575,7 @@ class Caliper():
             dc.DrawLine(x2, y1, x2, y3) # right vertical
             dc.DrawLine(x1, y2, x2, y2) # horiz
         
+        dc.EndDrawing()
         self.was_hittable = True
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
