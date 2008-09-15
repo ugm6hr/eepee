@@ -184,7 +184,9 @@ class Canvas(wx.Window):
         #worldposx = (pos.x-self.xoffset)*self.factor
         #worldposy = (pos.y-self.yoffset)*self.factor
         #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
-        self.frame.SetStatusText("%s,%s  %s,%s" %(pos.x, pos.y, worldx, worldy))
+        caliper, hit_type = self.HitObject(worldx, worldy)
+        if caliper:
+            self.frame.SetStatusText("%s" %(hit_type))
         
     def OnResize(self, event):
         """canvas resize triggers bgchanged flag so that it will
@@ -280,7 +282,6 @@ class Canvas(wx.Window):
         
     def DrawFG(self):
         """Redraw the foreground elements"""
-        #self.DrawBG() # will later avoid a full bg redraw
         dc = wx.ClientDC(self)
         dc.Blit(self.xoffset, self.yoffset,
                   self.resized_width, self.resized_height, self.imagedc, 0, 0)
@@ -305,6 +306,18 @@ class Canvas(wx.Window):
         """Start a new caliper"""
         self.caliperlist.append(Caliper(self))
         self.activetool = "caliper"
+        
+    def HitObject(self, worldx, worldy):
+        """Find the object that is hittable.
+        This is the object within a defined distance from the given coords"""
+           
+        # find if any caliper is hittable
+        for caliper in self.caliperlist:
+            hittable = caliper.isHittable(worldx, worldy)
+            if hittable > 0:
+                return (caliper, hittable)
+        
+        return (None, 0)
 #------------------------------------------------------------------------------
 
 class DisplayImage():
@@ -441,16 +454,22 @@ class Caliper():
         #           |       |
         #         x1,y3     x2,y3
         #
-        
+        # default coordinates
         self.x1, self.x2 = 0, 0
-        self.y1, self.y2, self.y3 = 0, 0, 0
+        self.y1, self.y2 = 0, 0
+        self.y3 = self.canvas.maxheight
         
         self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
+        self.hittable_pen = wx.Pen(wx.Colour(255,0,0), 1, wx.SOLID)
         
         # 1 - positioning first caliperleg, 2 - positioning second caliperleg
         # 3 - positioned both caliperlegs, 4 - repositioning whole caliper
         # cycle 1 -> 2 -> 3 -> 2 or 4 -> 3
         self.state = 1
+        
+        # range from mouse to be hittable
+        self.hitrange = 10
+        self.was_hittable = False # true if it becomes hittable
         
     def draw(self):
         """draw the caliper on the canvas"""
@@ -481,11 +500,65 @@ class Caliper():
         # beginning - this is first caliper being positioned
         if event.Moving() and self.state == 1:
             self.x1 = self.x2 = mousex
-            self.y1 = self.y2 = 0 #self.canvas.yoffset
-            self.y3 = self.canvas.maxheight#PixelsToWorld(
-                      #self.canvas.height - self.canvas.yoffset, 'yaxis')
             self.canvas._FGchanged = True
         
+        # fix the first caliper
+        elif event.LeftDown() and self.state == 1:
+            self.state = 2
+            
+        # positioning second caliper
+        elif event.Moving() and self.state == 2:
+            self.x2 = mousex
+            self.y2 = mousey
+            self.canvas._FGchanged = True
+            
+        # fix second caliper
+        elif event.LeftDown() and self.state == 2:
+            self.state = 3
+            self.canvas.activetool = None
+            
+        else:
+            pass
+        
+    def isHittable(self, worldx, worldy):
+        """Is it within hitting range from current mouse position"""
+        if abs(worldx - self.x1) < self.hitrange:
+            self.MarkAsHittable(1)
+            return 1 #first leg
+        elif abs(worldx - self.x2) < self.hitrange:
+            self.MarkAsHittable(2)
+            return 2 #second leg
+        elif abs(worldy - self.y2) < self.hitrange:
+            self.MarkAsHittable(3)
+            return 3 #horizontal (whole caliper)
+        else:
+            if self.was_hittable:
+                self.draw() # will unmark
+            return 0
+        
+    def MarkAsHittable(self, type):
+        """Mark caliper as hittable.
+        type is 1 for first leg, 2 for second leg and 3 for whole"""
+        dc = wx.ClientDC(self.canvas)
+        dc.BeginDrawing()
+        dc.SetPen(self.hittable_pen)
+        
+        x1 = self.canvas.WorldToPixels(self.x1, "xaxis")
+        x2 = self.canvas.WorldToPixels(self.x2, "xaxis")
+        y1 = self.canvas.WorldToPixels(self.y1, "yaxis")
+        y2 = self.canvas.WorldToPixels(self.y2, "yaxis")
+        y3 = self.canvas.WorldToPixels(self.y3, "yaxis")
+        
+        if type == 1:
+            dc.DrawLine(x1, y1, x1, y3) # left vertical
+        elif type == 2:
+            dc.DrawLine(x2, y1, x2, y3) # right vertical
+        elif type == 3:
+            dc.DrawLine(x1, y1, x1, y3) # left vertical
+            dc.DrawLine(x2, y1, x2, y3) # right vertical
+            dc.DrawLine(x1, y2, x2, y2) # horiz
+        
+        self.was_hittable = True
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
     def OnInit(self):
