@@ -185,27 +185,33 @@ class Canvas(wx.Window):
 
     def handleMouseEvents(self, event):
         """handle mouse events when no tool is active"""
-        pos = event.GetPosition()
-        worldx, worldy = (self.PixelsToWorld(pos.x, 'xaxis'),
-                          self.PixelsToWorld(pos.y, 'yaxis'))
-        
-        if event.Moving() and self.resizedimage:
-            #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
-            caliper, hit_type = self.HitObject(worldx, worldy)
-            if caliper:
-                self.frame.SetStatusText("%s" %(hit_type))
-                
-        elif event.LeftDown() and self.resizedimage:
-            caliper, hit_type = self.HitObject(worldx, worldy)
-            if caliper:
-                self.activetool = 'caliper'
-                if hit_type == 1: #flip the caliper legs 
-                    caliper.x1, caliper.x2 = caliper.x2, caliper.x1
-                    caliper.state = 2
-                elif hit_type == 2: #move second leg
-                    caliper.state = 2
-                elif hit_type == 3: #move whole caliper
-                    caliper.state = 4
+        if self.resizedimage:
+            pos = event.GetPosition()
+            worldx, worldy = (self.PixelsToWorld(pos.x, 'xaxis'),
+                              self.PixelsToWorld(pos.y, 'yaxis'))
+            
+            if event.Moving():
+                #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
+                caliper, hit_type = self.HitObject(worldx, worldy)
+                if caliper:
+                    self.frame.SetStatusText("%s" %(hit_type))
+                    
+            elif event.LeftDown():
+                caliper, hit_type = self.HitObject(worldx, worldy)
+                if caliper:
+                    self.activetool = 'caliper'
+                    if hit_type == 1: #flip the caliper legs 
+                        caliper.x1, caliper.x2 = caliper.x2, caliper.x1
+                        caliper.state = 2
+                    elif hit_type == 2: #move second leg
+                        caliper.state = 2
+                    elif hit_type == 3: #move whole caliper
+                        caliper.x1offset = worldx - caliper.x1
+                        caliper.x2offset = caliper.x2 - worldx
+                        caliper.state = 4
+                        
+        else:
+            pass
                 
         
     def OnResize(self, event):
@@ -552,12 +558,16 @@ class Caliper():
         
         # move whole caliper
         elif event.Moving() and self.state == 4:
-            pass # TODO:
+            self.x1 = mousex - self.x1offset
+            self.x2 = mousex + self.x2offset
+            self.y2 = mousey
+            self.canvas._FGchanged = True
         
         # stop moving whole caliper
         elif event.LeftDown() and self.state == 4:
             self.state = 3
             self.canvas.activetool = None
+            self.activetool = None
         
         else:
             pass
@@ -565,16 +575,20 @@ class Caliper():
     def isHittable(self, worldx, worldy):
         """Is it within hitting range from current mouse position"""
         if abs(worldx - self.x1) < self.hitrange:
-            self.MarkAsHittable(1)
+            if not self.was_hittable:
+                self.MarkAsHittable(1)
             return 1 #first leg
         elif abs(worldx - self.x2) < self.hitrange:
-            self.MarkAsHittable(2)
+            if not self.was_hittable:
+                self.MarkAsHittable(2)
             return 2 #second leg
         elif abs(worldy - self.y2) < self.hitrange:
-            self.MarkAsHittable(3)
+            if not self.was_hittable:
+                self.MarkAsHittable(3)
             return 3 #horizontal (whole caliper)
         else:
             if self.was_hittable:
+                self.was_hittable = False
                 self.draw() # will unmark
             return 0
         
