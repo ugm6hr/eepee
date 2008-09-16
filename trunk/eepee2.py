@@ -172,6 +172,9 @@ class Canvas(wx.Window):
         # caliper list is a list of all calipers
         self.caliperlist = []
         
+        # flag to check if image is loaded
+        self.resizedimage = None
+        
         self._BGchanged = False
         self._FGchanged = False
         
@@ -180,16 +183,30 @@ class Canvas(wx.Window):
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
 
-    def OnMotion(self, event):
+    def handleMouseEvents(self, event):
+        """handle mouse events when no tool is active"""
         pos = event.GetPosition()
         worldx, worldy = (self.PixelsToWorld(pos.x, 'xaxis'),
                           self.PixelsToWorld(pos.y, 'yaxis'))
-        #worldposx = (pos.x-self.xoffset)*self.factor
-        #worldposy = (pos.y-self.yoffset)*self.factor
-        #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
-        caliper, hit_type = self.HitObject(worldx, worldy)
-        if caliper:
-            self.frame.SetStatusText("%s" %(hit_type))
+        
+        if event.Moving() and self.resizedimage:
+            #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
+            caliper, hit_type = self.HitObject(worldx, worldy)
+            if caliper:
+                self.frame.SetStatusText("%s" %(hit_type))
+                
+        elif event.LeftDown() and self.resizedimage:
+            caliper, hit_type = self.HitObject(worldx, worldy)
+            if caliper:
+                self.activetool = 'caliper'
+                if hit_type == 1: #flip the caliper legs 
+                    caliper.x1, caliper.x2 = caliper.x2, caliper.x1
+                    caliper.state = 2
+                elif hit_type == 2: #move second leg
+                    caliper.state = 2
+                elif hit_type == 3: #move whole caliper
+                    caliper.state = 4
+                
         
     def OnResize(self, event):
         """canvas resize triggers bgchanged flag so that it will
@@ -226,8 +243,7 @@ class Canvas(wx.Window):
             self.caliperlist[-1].handleMouseEvents(event)
                 
         elif self.activetool == None: #TODO: Move to top
-            if event.Moving():
-                self.OnMotion(event)
+            self.handleMouseEvents(event)
 
     def PixelsToWorld(self, coord, axis):
         """convert from pixels to world units.
@@ -533,7 +549,16 @@ class Caliper():
         elif event.LeftDown() and self.state == 2:
             self.state = 3
             self.canvas.activetool = None
-            
+        
+        # move whole caliper
+        elif event.Moving() and self.state == 4:
+            pass # TODO:
+        
+        # stop moving whole caliper
+        elif event.LeftDown() and self.state == 4:
+            self.state = 3
+            self.canvas.activetool = None
+        
         else:
             pass
         
