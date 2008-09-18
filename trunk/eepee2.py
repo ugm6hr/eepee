@@ -178,6 +178,14 @@ class Canvas(wx.Window):
         self._BGchanged = False
         self._FGchanged = False
         
+        #  intialise buffer DC
+        self.maxWidth  = 1000
+        self.maxHeight = 1000
+        self.buffer = wx.EmptyBitmap(self.maxWidth, self.maxHeight)
+        dc = wx.BufferedDC(None, self.buffer)
+        dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
+        dc.Clear()
+        
         #self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
@@ -292,7 +300,7 @@ class Canvas(wx.Window):
         
         # blit the image centerd in x and y axes
         self.bmp = self.ImageToBitmap(self.resizedimage)
-        dc = wx.ClientDC(self)
+        dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
         dc.Clear()  #clear old image if still there
         self.imagedc = wx.MemoryDC()
         self.imagedc.SelectObject(self.bmp)
@@ -306,13 +314,13 @@ class Canvas(wx.Window):
         
     def DrawFG(self):
         """Redraw the foreground elements"""
-        dc = wx.ClientDC(self)
+        dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
         dc.Clear()
         dc.Blit(self.xoffset, self.yoffset,
                   self.resized_width, self.resized_height, self.imagedc, 0, 0)
         
         for caliper in self.caliperlist:
-            caliper.draw()
+            caliper.draw(dc)
             
         self._FGchanged = False
     
@@ -498,9 +506,8 @@ class Caliper():
         # distance between legs
         self.measurement = 0
         
-    def draw(self):
+    def draw(self,dc):
         """draw the caliper on the canvas"""
-        dc = wx.ClientDC(self.canvas)
         dc.BeginDrawing()
         dc.SetPen(self.pen)
         
@@ -589,13 +596,13 @@ class Caliper():
         else:
             if self.was_hittable:
                 self.was_hittable = False
-                self.draw() # will unmark
+                self.canvas._FGchanged = True
             return 0
         
     def MarkAsHittable(self, type):
         """Mark caliper as hittable.
         type is 1 for first leg, 2 for second leg and 3 for whole"""
-        dc = wx.ClientDC(self.canvas)
+        dc = wx.BufferedDC(wx.ClientDC(self.canvas), self.canvas.buffer, wx.BUFFER_CLIENT_AREA)
         dc.BeginDrawing()
         dc.SetPen(self.hittable_pen)
         
