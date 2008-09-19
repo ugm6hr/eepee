@@ -199,12 +199,13 @@ class Canvas(wx.Window):
                               self.PixelsToWorld(pos.y, 'yaxis'))
             
             if event.Moving():
-                #self.frame.SetStatusText("%s,%s" %(worldposx, worldposy))
+                # check for hitobject and mark them
                 caliper, hit_type = self.HitObject(worldx, worldy)
                 if caliper:
                     self.frame.SetStatusText("%s" %(hit_type))
                     
             elif event.LeftDown():
+                # check for hit object and activate it
                 caliper, hit_type = self.HitObject(worldx, worldy)
                 if caliper:
                     self.activetool = 'caliper'
@@ -218,6 +219,13 @@ class Canvas(wx.Window):
                         caliper.x2offset = caliper.x2 - worldx
                         caliper.state = 4
                         
+            elif event.RightDown():
+                # if caliper hittable - delete it
+                caliper, hit_type = self.HitObject(worldx, worldy)
+                if caliper:
+                    self.caliperlist.remove(caliper)
+                    self._FGchanged = True
+           
         else:
             pass
                 
@@ -230,11 +238,17 @@ class Canvas(wx.Window):
         
     def OnIdle(self, event):
         """Redraw if there is a change"""
+        if self._BGchanged or self._FGchanged:
+            dc = wx.BufferedDC(wx.ClientDC(self), self.buffer,
+                               wx.BUFFER_CLIENT_AREA)
+            dc.Clear()  #clear old image if still there        
+        
         if self._BGchanged:
-            self.DrawBG()
-            
-        if self._FGchanged:
-            self.DrawFG()
+            self.ProcessBG()
+            self.Draw(dc)
+           
+        elif self._FGchanged:
+            self.Draw(dc)
             
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
@@ -277,8 +291,8 @@ class Canvas(wx.Window):
         elif axis == 'yaxis':
             return (coord / self.factor) + self.yoffset
         
-    def DrawBG(self):
-        """Draw the image after resizing to best fit current size"""
+    def ProcessBG(self):
+        """Process the image by resizing to best fit current size"""
         image = self.frame.displayimage.image
         self.width, self.height = self.GetSize()
         imagewidth, imageheight = image.size
@@ -300,28 +314,30 @@ class Canvas(wx.Window):
         
         # blit the image centerd in x and y axes
         self.bmp = self.ImageToBitmap(self.resizedimage)
-        dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
-        dc.Clear()  #clear old image if still there
         self.imagedc = wx.MemoryDC()
         self.imagedc.SelectObject(self.bmp)
         
         self.xoffset = (self.width-self.resized_width)/2
         self.yoffset = (self.height-self.resized_height)/2
-        dc.Blit(self.xoffset, self.yoffset,
-                  self.resized_width, self.resized_height, self.imagedc, 0, 0)
+    #    
+    #def DrawBG(self, dc):
+    #    """Draw the processed image stored in imagedc to the BG"""
+    #    
+    #    dc.Blit(self.xoffset, self.yoffset,
+    #              self.resized_width, self.resized_height, self.imagedc, 0, 0)
+    #    self._BGchanged = False
         
-        self._BGchanged = False
-        
-    def DrawFG(self):
+    def Draw(self, dc):
         """Redraw the foreground elements"""
-        dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
-        dc.Clear()
+        #dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
+        #dc.Clear()
         dc.Blit(self.xoffset, self.yoffset,
                   self.resized_width, self.resized_height, self.imagedc, 0, 0)
         
         for caliper in self.caliperlist:
             caliper.draw(dc)
-            
+        
+        self._BGchanged = False 
         self._FGchanged = False
     
     def resetFG(self):
@@ -346,7 +362,9 @@ class Canvas(wx.Window):
            
         # find if any caliper is hittable
         for caliper in self.caliperlist:
+            print caliper, " of ", len(self.caliperlist)
             hittable = caliper.isHittable(worldx, worldy)
+            print "hittable = ", hittable
             if hittable > 0:
                 return (caliper, hittable)
         
@@ -533,7 +551,7 @@ class Caliper():
                 
             dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
                        self.canvas.WorldToPixels((self.x1 + self.x2)/2, 'xaxis'),
-                       self.canvas.WorldToPixels(self.y2 - 40, 'xaxis'))
+                       self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
         
         dc.EndDrawing()
         
@@ -581,18 +599,25 @@ class Caliper():
         
     def isHittable(self, worldx, worldy):
         """Is it within hitting range from current mouse position"""
+        print worldx, self.x1, self.x2
         if abs(worldx - self.x1) < self.hitrange:
             if not self.was_hittable:
                 self.MarkAsHittable(1)
             return 1 #first leg
+        
         elif abs(worldx - self.x2) < self.hitrange:
             if not self.was_hittable:
                 self.MarkAsHittable(2)
             return 2 #second leg
-        elif abs(worldy - self.y2) < self.hitrange:
+        
+        
+        elif abs(worldy - self.y2) < self.hitrange and \
+             sorted([worldx, self.x1, self.x2])[1] == worldx:
+            # if mouse x is between x1 and x2
             if not self.was_hittable:
                 self.MarkAsHittable(3)
             return 3 #horizontal (whole caliper)
+        
         else:
             if self.was_hittable:
                 self.was_hittable = False
