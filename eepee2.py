@@ -266,9 +266,11 @@ class Canvas(wx.Window):
             else:
                 self.rubberband.handleMouseEvents(event)
                 
-        if self.activetool == "caliper":
-            # the active caliper is the last one on the list
-            self.caliperlist[-1].handleMouseEvents(event)
+        elif self.activetool == "caliper":
+            # hand the event to the active caliper
+            for index, caliper in enumerate(self.caliperlist):
+                if caliper.state != 3: # TODO: write more efficiently without loop
+                    self.caliperlist[index].handleMouseEvents(event)
                 
         elif self.activetool == None: #TODO: Move to top
             self.handleMouseEvents(event)
@@ -362,9 +364,7 @@ class Canvas(wx.Window):
            
         # find if any caliper is hittable
         for caliper in self.caliperlist:
-            print caliper, " of ", len(self.caliperlist)
             hittable = caliper.isHittable(worldx, worldy)
-            print "hittable = ", hittable
             if hittable > 0:
                 return (caliper, hittable)
         
@@ -599,7 +599,6 @@ class Caliper():
         
     def isHittable(self, worldx, worldy):
         """Is it within hitting range from current mouse position"""
-        print worldx, self.x1, self.x2
         if abs(worldx - self.x1) < self.hitrange:
             if not self.was_hittable:
                 self.MarkAsHittable(1)
