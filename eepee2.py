@@ -9,12 +9,12 @@ import wx
 from customrubberband import RubberBand
 from geticons import getBitmap
 #------------------------------------------------------------------------------
+# Global variables
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
-ID_QUIT     =   wx.NewId()  ;   #ID_ZOOMOUT = wx.NewId()
-ID_CROP  =   wx.NewId()  ;   #ID_RUBBERBAND = wx.NewId()
-ID_ROTATERIGHT = wx.NewId()
-ID_ROTATELEFT = wx.NewId()
+ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()  
+ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
+ID_CALIBRATE = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -40,7 +40,7 @@ class MyFrame(wx.Frame):
         self.splitter.SetMinimumPaneSize(10)
                
         # The windows inside the splitter are a
-        # 1. The drawing canvas - float canvas form images
+        # 1. canvas - A window in which all the drawing is done
         # 2. A notebook panel holding the playlist and notes
         self.canvas = Canvas(self.splitter)
         self.displayimage = DisplayImage(self)
@@ -80,6 +80,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.displayimage.RotateRight, id=ID_ROTATERIGHT)
         self.Bind(wx.EVT_MENU, self.displayimage.ChooseCropFrame, id=ID_CROP)
         self.Bind(wx.EVT_MENU, self.canvas.NewCaliper, id=ID_CALIPER)
+        self.Bind(wx.EVT_MENU, self.canvas.Calibrate, id=ID_CALIBRATE)
 
     def _buildMenuBar(self):
         """Build the menu bar"""
@@ -90,9 +91,14 @@ class MyFrame(wx.Frame):
         file_menu.Append(ID_SAVE, "&Save","Save Image")
         file_menu.Append(ID_QUIT, "&Exit","Exit")
    
+        edit_menu = wx.Menu()
+        edit_menu.Append(ID_CALIBRATE, "Cali&brate", "Calibrate image")
+        edit_menu.Append(ID_CALIPER, "New &Caliper", "Start new caliper")
+        
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
         image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
+        image_menu.Append(ID_CROP, "Crop", "Crop the image")
         
         MenuBar.Append(file_menu, "&File")
         MenuBar.Append(image_menu, "&Image")
@@ -107,20 +113,24 @@ class MyFrame(wx.Frame):
             (False, ID_OPEN, "Open", "Open file", "open"),
             (False, ID_SAVE, "Save", "Save file", "save"),
             (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
+            (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
             (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
-        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL |  wx.NO_BORDER | wx.TB_FLAT)
+        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL|wx.NO_BORDER|
+                                          wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((22,22))
 
         for tool in tools:
             checktool, id, shelp, lhelp, bmp = tool
             if checktool:
-                self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
+                self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),
+                                               longHelp=lhelp)
             else:
-                self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),longHelp=lhelp)
+                self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),
+                                          longHelp=lhelp)
                 
         self.toolbar.Realize()
 
@@ -171,6 +181,7 @@ class Canvas(wx.Window):
         
         # caliper list is a list of all calipers
         self.caliperlist = []
+        self.activecaliperindex = -1 #only one caliper is active
         
         # flag to check if image is loaded
         self.resizedimage = None
@@ -178,15 +189,6 @@ class Canvas(wx.Window):
         self._BGchanged = False
         self._FGchanged = False
         
-        #  intialise buffer DC
-        self.maxWidth  = 1000
-        self.maxHeight = 1000
-        self.buffer = wx.EmptyBitmap(self.maxWidth, self.maxHeight)
-        dc = wx.BufferedDC(None, self.buffer)
-        dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
-        dc.Clear()
-        
-        #self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
@@ -200,16 +202,16 @@ class Canvas(wx.Window):
             
             if event.Moving():
                 # check for hitobject and mark them
-                caliper, hit_type = self.HitObject(worldx, worldy)
-                if caliper:
-                    self.frame.SetStatusText("%s" %(hit_type))
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
                     
             elif event.LeftDown():
                 # check for hit object and activate it
-                caliper, hit_type = self.HitObject(worldx, worldy)
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
                 if caliper:
                     self.activetool = 'caliper'
-                    if hit_type == 1: #flip the caliper legs 
+                    self.activecaliperindex = caliperindex
+                    if hit_type == 1:
+                        #flip the caliper legs, then just move second leg
                         caliper.x1, caliper.x2 = caliper.x2, caliper.x1
                         caliper.state = 2
                     elif hit_type == 2: #move second leg
@@ -225,15 +227,19 @@ class Canvas(wx.Window):
                 if caliper:
                     self.caliperlist.remove(caliper)
                     self._FGchanged = True
-           
         else:
             pass
-                
         
     def OnResize(self, event):
         """canvas resize triggers bgchanged flag so that it will
         be redrawn on next idle event"""
-        if self.frame.displayimage.image: # only if image is loaded
+        # update / initialize height and width
+        self.width, self.height = self.GetSize()
+        
+        # update / create the buffer for the buffered dc
+        self.buffer = wx.EmptyBitmap(self.width, self.height)
+        
+        if self.resizedimage: # only if image is loaded
             self._BGchanged = True
         
     def OnIdle(self, event):
@@ -268,10 +274,11 @@ class Canvas(wx.Window):
                 
         elif self.activetool == "caliper":
             # hand the event to the active caliper
-            for index, caliper in enumerate(self.caliperlist):
-                if caliper.state != 3: # TODO: write more efficiently without loop
-                    self.caliperlist[index].handleMouseEvents(event)
-                
+            self.caliperlist[self.activecaliperindex].handleMouseEvents(event)
+            
+        elif self.activetool == "calibrate":
+            self.calibrate_caliper.handleMouseEvents(event)
+            
         elif self.activetool == None: #TODO: Move to top
             self.handleMouseEvents(event)
 
@@ -296,7 +303,6 @@ class Canvas(wx.Window):
     def ProcessBG(self):
         """Process the image by resizing to best fit current size"""
         image = self.frame.displayimage.image
-        self.width, self.height = self.GetSize()
         imagewidth, imageheight = image.size
         
         # What drives the scaling - height or width
@@ -308,7 +314,8 @@ class Canvas(wx.Window):
         # resize with antialiasing
         self.resized_width =  int(imagewidth * self.scalingvalue)
         self.resized_height = int(imageheight * self.scalingvalue)
-        self.resizedimage = image.resize((self.resized_width, self.resized_height)
+        self.resizedimage = image.resize((self.resized_width,
+                                          self.resized_height)
                                              , Image.ANTIALIAS)
         
         # factor chosen so that image ht = 1000 U
@@ -321,21 +328,14 @@ class Canvas(wx.Window):
         
         self.xoffset = (self.width-self.resized_width)/2
         self.yoffset = (self.height-self.resized_height)/2
-    #    
-    #def DrawBG(self, dc):
-    #    """Draw the processed image stored in imagedc to the BG"""
-    #    
-    #    dc.Blit(self.xoffset, self.yoffset,
-    #              self.resized_width, self.resized_height, self.imagedc, 0, 0)
-    #    self._BGchanged = False
-        
+            
     def Draw(self, dc):
-        """Redraw the foreground elements"""
-        #dc = wx.BufferedDC(wx.ClientDC(self), self.buffer, wx.BUFFER_CLIENT_AREA)
-        #dc.Clear()
+        """Redraw the background and foreground elements"""
+        # blit the buffer on to the screen - BG
         dc.Blit(self.xoffset, self.yoffset,
-                  self.resized_width, self.resized_height, self.imagedc, 0, 0)
+                self.resized_width, self.resized_height, self.imagedc, 0, 0)
         
+        # draw the calipers
         for caliper in self.caliperlist:
             caliper.draw(dc)
         
@@ -356,19 +356,27 @@ class Canvas(wx.Window):
     def NewCaliper(self, event):
         """Start a new caliper"""
         self.caliperlist.append(Caliper(self))
+        self.activecaliperindex = len(self.caliperlist)-1
         self.activetool = "caliper"
+        
+    def Calibrate(self, event):
+        """Calibrate / recalibrate image"""
+        self.calibrate_caliper = CalibrateCaliper(self)
+        self.caliperlist.append(self.calibrate_caliper)
+        self.activetool = "calibrate"
+        self.activecaliperindex = len(self.caliperlist)-1
         
     def HitObject(self, worldx, worldy):
         """Find the object that is hittable.
         This is the object within a defined distance from the given coords"""
-           
         # find if any caliper is hittable
-        for caliper in self.caliperlist:
+        for caliperindex, caliper in enumerate(self.caliperlist):
             hittable = caliper.isHittable(worldx, worldy)
             if hittable > 0:
-                return (caliper, hittable)
+                return (caliper, caliperindex, hittable)
         
-        return (None, 0)
+        # if nothing is hit
+        return (None, 0, 0)
 #------------------------------------------------------------------------------
 
 class DisplayImage():
@@ -484,9 +492,12 @@ class DisplayImage():
         # for frame coords derived from canvas, first correct for image offset on canvas
         # then correct for scaling value so that coords apply to original image
         if coord_reference == "canvas":
-            cropframe = (cropframe[0] - self.canvas.xoffset, cropframe[1] - self.canvas.yoffset,
-                                  cropframe[2] - self.canvas.xoffset, cropframe[3] - self.canvas.yoffset)
-            cropframe = tuple(int(coord/self.canvas.scalingvalue) for coord in cropframe)
+            cropframe = (cropframe[0] - self.canvas.xoffset,
+                         cropframe[1] - self.canvas.yoffset,
+                         cropframe[2] - self.canvas.xoffset,
+                         cropframe[3] - self.canvas.yoffset)
+            cropframe = tuple(int(coord/self.canvas.scalingvalue)
+                                          for coord in cropframe)
             
         self.image = self.uncropped_image.crop(cropframe)
 
@@ -550,7 +561,7 @@ class Caliper():
                 measurement_units = 'ms'
                 
             dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
-                       self.canvas.WorldToPixels((self.x1 + self.x2)/2, 'xaxis'),
+                       self.canvas.WorldToPixels((self.x1 + self.x2)/2,'xaxis'),
                        self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
         
         dc.EndDrawing()
@@ -579,6 +590,7 @@ class Caliper():
         # fix second caliper
         elif event.LeftDown() and self.state == 2:
             self.state = 3
+            self.OnCompletion()
             self.canvas.activetool = None
         
         # move whole caliper
@@ -647,6 +659,63 @@ class Caliper():
         
         dc.EndDrawing()
         self.was_hittable = True
+        
+    def OnCompletion(self):
+        """Things to do on completion of one caliper.
+        Only a placeholder here for now"""
+        pass
+    
+#------------------------------------------------------------------------------
+class CalibrateCaliper(Caliper):
+    """A special caliper used for calibration"""
+    def __init__(self, parent):
+        Caliper.__init__(self, parent)
+        self.canvas = parent
+        
+        # default coordinates
+        self.x1, self.x2 = 0, 0
+        self.y1, self.y2 = 0, 0
+        self.y3 = self.canvas.maxheight
+        
+        self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
+        self.state = 1
+        self.measurement = 0
+        
+    def OnCompletion(self):
+        # get calibration entry
+        calibration = self.GetUserEntry("Enter distance in ms:")
+        
+        # handle cancel
+        if calibration == None:
+            self.canvas.caliperlist.pop(-1)
+            self.canvas._FGchanged = True
+            return
+        
+        # handle invalid entry
+        while not calibration.isdigit():
+            calibration = (self.GetUserEntry
+                          ("Please enter a positive number"))
+            
+        # set canvas calibration
+        self.canvas.calibration = int(calibration) / self.measurement
+        
+        # remove calibrate_caliper
+        self.canvas.caliperlist.pop(-1)
+        self.canvas._FGchanged = True
+    
+    def GetUserEntry(self,message):
+        """Get entry from user for calibration.
+        Entry must be a positive integer"""
+        calib = 0
+        dialog = wx.TextEntryDialog(None,\
+                                   message,"Calibrate")
+        if dialog.ShowModal() == wx.ID_OK:
+            calibration = dialog.GetValue()
+            dialog.Destroy()
+            return calibration
+        else: # On cancel
+            return None
+
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
     def OnInit(self):
