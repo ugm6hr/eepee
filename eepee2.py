@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import sys, os
+import sys, os, copy
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 import Image
 import wx
@@ -14,7 +18,7 @@ ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
 ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
 ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()  
 ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
-ID_CALIBRATE = wx.NewId()
+ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -46,12 +50,14 @@ class MyFrame(wx.Frame):
         self.displayimage = DisplayImage(self)
         
         self.notebookpanel = wx.Panel(self.splitter, -1)
-        
-        self.nb = wx.Notebook(self.notebookpanel) 
+        self.nb = wx.Notebook(self.notebookpanel)
+        self.notepadpanel = wx.Panel(self.nb, -1)
+                
         self.listbox = wx.ListBox(self.nb, -1)
-        self.notepad = wx.TextCtrl(self.nb, -1)
+        self.notepad = wx.TextCtrl(self.notepadpanel, -1)
+        
         self.nb.AddPage(self.listbox, "Playlist")
-        self.nb.AddPage(self.notepad, "Notes")
+        self.nb.AddPage(self.notepadpanel, "Notes")
 
         # unsplit splitter for now, split later when size can be calculated
         self.splitter.SplitVertically(self.canvas,self.notebookpanel)
@@ -61,6 +67,10 @@ class MyFrame(wx.Frame):
         notebooksizer = wx.BoxSizer()
         notebooksizer.Add(self.nb, 1, wx.EXPAND, 0)
         self.notebookpanel.SetSizer(notebooksizer)
+        
+        notepadsizer = wx.BoxSizer()
+        notepadsizer.Add(self.notepad, 1, wx.EXPAND, 0)
+        self.notepadpanel.SetSizer(notepadsizer)
         
         splittersizer = wx.BoxSizer()
         splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
@@ -81,6 +91,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.displayimage.ChooseCropFrame, id=ID_CROP)
         self.Bind(wx.EVT_MENU, self.canvas.NewCaliper, id=ID_CALIPER)
         self.Bind(wx.EVT_MENU, self.canvas.Calibrate, id=ID_CALIBRATE)
+        self.Bind(wx.EVT_MENU, self.canvas.ToggleDoodle, id = ID_DOODLE)
 
     def _buildMenuBar(self):
         """Build the menu bar"""
@@ -94,6 +105,7 @@ class MyFrame(wx.Frame):
         edit_menu = wx.Menu()
         edit_menu.Append(ID_CALIBRATE, "Cali&brate", "Calibrate image")
         edit_menu.Append(ID_CALIPER, "New &Caliper", "Start new caliper")
+        edit_menu.Append(ID_DOODLE, "Doodle", "Doodle on the canvas")
         
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
@@ -115,6 +127,7 @@ class MyFrame(wx.Frame):
             (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
             (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
             (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+            (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
@@ -155,7 +168,7 @@ class MyFrame(wx.Frame):
     
     def CleanUp(self):
         """Clean up on closing an image"""
-        pass
+        self.displayimage.CloseImage()
     
     def OnQuit(self, event):
         """On quitting the application"""
@@ -170,6 +183,8 @@ class Canvas(wx.Window):
         self.frame = wx.GetTopLevelParent(self)
                 
         self.rubberband = RubberBand(self)
+        self.doodle = Doodle(self)
+        
         # Image height will always be 1000 units unless zoomed in
         self.maxheight = 1000
         
@@ -188,6 +203,7 @@ class Canvas(wx.Window):
         
         self._BGchanged = False
         self._FGchanged = False
+        self._doodlechanged = False
         
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
@@ -223,7 +239,7 @@ class Canvas(wx.Window):
                         
             elif event.RightDown():
                 # if caliper hittable - delete it
-                caliper, hit_type = self.HitObject(worldx, worldy)
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
                 if caliper:
                     self.caliperlist.remove(caliper)
                     self._FGchanged = True
@@ -251,9 +267,11 @@ class Canvas(wx.Window):
         
         if self._BGchanged:
             self.ProcessBG()
+            #dc.Clear()
             self.Draw(dc)
            
         elif self._FGchanged:
+            #dc.Clear()
             self.Draw(dc)
             
     def OnMouseEvents(self, event):
@@ -279,6 +297,9 @@ class Canvas(wx.Window):
         elif self.activetool == "calibrate":
             self.calibrate_caliper.handleMouseEvents(event)
             
+        elif self.activetool == "doodle":
+            self.doodle.handleMouseEvents(event)
+        
         elif self.activetool == None: #TODO: Move to top
             self.handleMouseEvents(event)
 
@@ -339,8 +360,17 @@ class Canvas(wx.Window):
         for caliper in self.caliperlist:
             caliper.draw(dc)
         
+        # doodle lines
+        self.doodle.Draw(dc)
+        
         self._BGchanged = False 
         self._FGchanged = False
+        #self._doodlechanged = False
+    
+    def DrawDoodle(self, dc):
+        """Draw the doodle lines without redrawing everything else"""
+        self.doodle.Draw(dc)
+        self._doodlechanged = False
     
     def resetFG(self):
         """When the coords are not preserved, reset all
@@ -377,6 +407,14 @@ class Canvas(wx.Window):
         
         # if nothing is hit
         return (None, 0, 0)
+    
+    def ToggleDoodle(self, event):
+        """Toggle doodle on or off"""
+        if self.activetool == "doodle":
+            self.activetool = None
+            
+        else:
+            self.activetool = "doodle"
 #------------------------------------------------------------------------------
 
 class DisplayImage():
@@ -390,6 +428,7 @@ class DisplayImage():
         # image cropping can be toggled
         # if prev crop info is stored, this will be true
         self.iscropped = False
+        self.cropframe = (0,0,0,0) # x1, y1, x2, y2
         
         # conversion factor to convert from px to world coords
         # = 1000 / image height in px
@@ -398,21 +437,32 @@ class DisplayImage():
         # keep a counter of rotation state, so that it can be saved
         self.rotation = 0
         
+        # default data
+        self.defaultdata = {"note" : '', "calibration" : 0,
+                            "rotation" : 0, "cropframe" : (0,0,0,0)}
+        
+        # data saved with image
+        self.data = None #ToDO : may not require
+        
     def LoadAndDisplayImage(self, event):
         """Load a new image and display"""
         dlg = wx.FileDialog(self.frame ,style=wx.OPEN,
                             wildcard=accepted_wildcards)
         dlg.SetFilterIndex(4) #set 'all files' as default
         if dlg.ShowModal() == wx.ID_OK:
-            filepath = dlg.GetPath()
+            self.filepath = dlg.GetPath()
         else:
             return
         
         try:        
-            self.uncropped_image = Image.open(filepath, 'r')
+            self.uncropped_image = Image.open(self.filepath, 'r')
         except:
             pass # TODO: catch errors and display error message
         
+        # load saved information
+        self.LoadImageData()
+        
+        #TODO: crop and rotate image as per loaded settings
         if self.iscropped:
             self.image = self.CropImage(self.cropframe, "image")
         else:
@@ -421,6 +471,53 @@ class DisplayImage():
         self.frame.InitializeSplitter()
         self.canvas._BGchanged = True
     
+    def LoadImageData(self):
+        """Load the stored data for the image at filepath"""
+        # data is stored pickled with pathname same as image with
+        # '.' in front (hidden on Linux) and '.pkl' as extension
+        self.datafile = os.path.join(os.path.dirname(self.filepath),
+                  "."+os.path.splitext(os.path.basename(self.filepath))[0]+".pkl")
+        if os.path.exists(self.datafile):
+            self.data = pickle.load(open(self.datafile,'r'))
+        
+            # load the variables with default vals if key does not exist
+            self.note = self.data.get("note", '')
+            self.frame.notepad.SetValue(self.note)
+            self.canvas.calibration = self.data.get("calibration", 0)
+            self.rotation = self.data.get("rotation", 0)
+            self.cropframe = self.data.get("cropframe", (0,0,0,0)) # will be in image coords
+        
+        else:
+            self.data = self.defaultdata #TODO: Should not need it here
+            
+        self.loaded_data = copy.deepcopy(self.data) #copy of the data that is loaded
+            
+    def SaveImageData(self):
+        """Save the image data - but only if data has changed"""
+        # collect all data
+        self.data["note"] = self.frame.notepad.GetValue() 
+        self.data["calibration"] = self.canvas.calibration
+        self.data["rotation"] = self.rotation
+        self.data["cropframe"] = self.cropframe
+
+        # save data if it has changed
+        if self.data != self.loaded_data:
+            
+            if os.name == 'posix':
+                pickle.dump(self.data, open(self.datafile, 'w'))
+            
+            # in windows, set file attribute to hidden
+            elif os.name == 'nt':
+                ## have to remove the hidden file because it doesnt have
+                ## write permission
+                if os.path.exists(self.datafile):
+                    os.remove(self.datafile)  
+                pickle.dump(self.data, open(self.datafile, 'w'))
+                status = os.popen("attrib +h \"%s\"" %(self.datafile))
+                if status != 0:
+                    pass
+                    #TODO: raise error
+        
     def SaveImage(self, event):
         """
         Save the modified DC as an image.
@@ -496,13 +593,17 @@ class DisplayImage():
                          cropframe[1] - self.canvas.yoffset,
                          cropframe[2] - self.canvas.xoffset,
                          cropframe[3] - self.canvas.yoffset)
-            cropframe = tuple(int(coord/self.canvas.scalingvalue)
+            self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
                                           for coord in cropframe)
             
         self.image = self.uncropped_image.crop(cropframe)
 
         self.iscropped = True
         self.canvas._BGchanged = True
+        
+    def CloseImage(self):
+        """Things to do before closing image"""
+        self.SaveImageData()
 
 #------------------------------------------------------------------------------
 class Caliper():
@@ -552,6 +653,11 @@ class Caliper():
         dc.DrawLine(x2, y1, x2, y3) # right vertical
         dc.DrawLine(x1, y2, x2, y2) # horiz
         
+        self.MeasureAndDisplay(dc)
+        
+        dc.EndDrawing()
+        
+    def MeasureAndDisplay(self, dc):
         # write measurement
         if self.state > 1:
             self.measurement = abs(self.x2 - self.x1) #world coords
@@ -564,7 +670,6 @@ class Caliper():
                        self.canvas.WorldToPixels((self.x1 + self.x2)/2,'xaxis'),
                        self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
         
-        dc.EndDrawing()
         
     def handleMouseEvents(self, event):
         """Mouse event handler when caliper is the active tool"""
@@ -703,6 +808,12 @@ class CalibrateCaliper(Caliper):
         self.canvas.caliperlist.pop(-1)
         self.canvas._FGchanged = True
     
+    def MeasureAndDisplay(self, dc):
+        # for calibration, measurement is always raw measurement
+        # and is not displayed
+        if self.state > 1:
+            self.measurement = abs(self.x2 - self.x1) #world coords
+            
     def GetUserEntry(self,message):
         """Get entry from user for calibration.
         Entry must be a positive integer"""
@@ -715,6 +826,71 @@ class CalibrateCaliper(Caliper):
             return calibration
         else: # On cancel
             return None
+        
+#-------------------------------------------------------------------------
+class Doodle():
+    """Doodle on the image canvas"""
+    def __init__(self, parent):
+        self.lines = [] #list of doodle coords
+        self.pen =wx.Pen(wx.Colour(255, 0, 0), 2, wx.SOLID)
+        self.canvas = parent
+        
+    def Draw(self, dc):
+        """Draw the lines for the doodle"""
+        dc.SetPen(self.pen)
+        for line in self.lines: # line is a list of tuples
+            for coords in line:
+                x1 = self.canvas.WorldToPixels(coords[0], 'xaxis')
+                y1 = self.canvas.WorldToPixels(coords[1], 'yaxis')
+                x2 = self.canvas.WorldToPixels(coords[2], 'xaxis')
+                y2 = self.canvas.WorldToPixels(coords[3], 'yaxis')
+                dc.DrawLine(*(x1, y1, x2, y2))
+                
+    def DrawLine(self, coords):
+        """Draw the last bit of line"""
+        dc = wx.BufferedDC(wx.ClientDC(self.canvas), self.canvas.buffer,
+                               wx.BUFFER_CLIENT_AREA)
+        dc.SetPen(self.pen)
+        dc.DrawLine(*coords)
+        
+                
+    def handleMouseEvents(self, event):
+        """Handle all mouse events when active"""
+        pos = event.GetPosition()
+        mousex, mousey = (self.canvas.PixelsToWorld(pos.x, 'xaxis'),
+                          self.canvas.PixelsToWorld(pos.y, 'yaxis'))
+        if event.LeftDown():
+            """Start a new line on left click"""
+            self.current_line = []
+            self.oldx = mousex
+            self.oldy = mousey
+        
+        elif event.Dragging() and event.LeftIsDown():
+            """Draw the line"""
+            coords = (mousex, mousey, self.oldx, self.oldy)
+            
+            x1 = self.canvas.WorldToPixels(coords[0], 'xaxis')
+            y1 = self.canvas.WorldToPixels(coords[1], 'yaxis')
+            x2 = self.canvas.WorldToPixels(coords[2], 'xaxis')
+            y2 = self.canvas.WorldToPixels(coords[3], 'yaxis')
+            
+            # stored lines will have world coords - draw as pixels
+            self.current_line.append(coords)
+            self.DrawLine((x1, y1, x2, y2))
+            #self.pos = pos
+            #dc.EndDrawing()
+            self.oldx = mousex
+            self.oldy = mousey
+            
+            #self.canvas._doodlechanged = True
+    
+        elif event.LeftUp():
+            """End current line"""
+            self.lines.append(self.current_line)    
+    
+    def Clear(self, event):
+        self.lines = []
+        self.window.Refresh()
 
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
