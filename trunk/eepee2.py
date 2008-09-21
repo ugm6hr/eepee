@@ -54,7 +54,7 @@ class MyFrame(wx.Frame):
         self.notepadpanel = wx.Panel(self.nb, -1)
                 
         self.listbox = wx.ListBox(self.nb, -1)
-        self.notepad = wx.TextCtrl(self.notepadpanel, -1)
+        self.notepad = wx.TextCtrl(self.notepadpanel, -1,style=wx.TE_MULTILINE)
         
         self.nb.AddPage(self.listbox, "Playlist")
         self.nb.AddPage(self.notepadpanel, "Notes")
@@ -332,12 +332,15 @@ class Canvas(wx.Window):
         else:
             self.scalingvalue = self.height / imageheight
         
+                
         # resize with antialiasing
         self.resized_width =  int(imagewidth * self.scalingvalue)
         self.resized_height = int(imageheight * self.scalingvalue)
         self.resizedimage = image.resize((self.resized_width,
                                           self.resized_height)
                                              , Image.ANTIALIAS)
+        
+        
         
         # factor chosen so that image ht = 1000 U
         self.factor = self.maxheight / self.resized_height
@@ -588,6 +591,7 @@ class DisplayImage():
         # convert coords to refer to image
         # for frame coords derived from canvas, first correct for image offset on canvas
         # then correct for scaling value so that coords apply to original image
+                    
         if coord_reference == "canvas":
             cropframe = (cropframe[0] - self.canvas.xoffset,
                          cropframe[1] - self.canvas.yoffset,
@@ -595,9 +599,9 @@ class DisplayImage():
                          cropframe[3] - self.canvas.yoffset)
             self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
                                           for coord in cropframe)
-            
-        self.image = self.uncropped_image.crop(cropframe)
-
+                
+        self.image = self.uncropped_image.crop(self.cropframe)
+        
         self.iscropped = True
         self.canvas._BGchanged = True
         
