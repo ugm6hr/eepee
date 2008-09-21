@@ -19,6 +19,7 @@ ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
 ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()  
 ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
 ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
+ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -82,7 +83,7 @@ class MyFrame(wx.Frame):
         self.CreateStatusBar()
         
         #-------------------------------------
-        self.Bind(wx.EVT_MENU, self.displayimage.LoadAndDisplayImage, id=ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.SelectFile, id=ID_OPEN)
         self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_QUIT)
         self.Bind(wx.EVT_MENU, self.displayimage.SaveImage, id=ID_SAVE)
         self.Bind(wx.EVT_MENU, self.ToggleSplit, id=ID_UNSPLIT)
@@ -92,6 +93,11 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.canvas.NewCaliper, id=ID_CALIPER)
         self.Bind(wx.EVT_MENU, self.canvas.Calibrate, id=ID_CALIBRATE)
         self.Bind(wx.EVT_MENU, self.canvas.ToggleDoodle, id = ID_DOODLE)
+        self.Bind(wx.EVT_MENU, self.SelectPrevImage, id = ID_PREVIOUS)
+        self.Bind(wx.EVT_MENU, self.SelectNextImage, id = ID_NEXT)
+        
+        self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
+        #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
     def _buildMenuBar(self):
         """Build the menu bar"""
@@ -112,8 +118,14 @@ class MyFrame(wx.Frame):
         image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
         image_menu.Append(ID_CROP, "Crop", "Crop the image")
         
+        playlist_menu = wx.Menu()
+        playlist_menu.Append(ID_PREVIOUS, "Previous", "Previous image")
+        playlist_menu.Append(ID_NEXT, "Next", "Next image")
+        
         MenuBar.Append(file_menu, "&File")
+        MenuBar.Append(edit_menu, "&Edit")
         MenuBar.Append(image_menu, "&Image")
+        MenuBar.Append(playlist_menu, "&Playlist")
         
         self.SetMenuBar(MenuBar)
 
@@ -129,6 +141,8 @@ class MyFrame(wx.Frame):
             (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
             (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
+            (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
+            (False, ID_NEXT, "Next", "Next image", "next"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
@@ -165,6 +179,63 @@ class MyFrame(wx.Frame):
         # if an image is loaded, trigger a redraw as canvas size changes
         if self.displayimage.image:
             self.canvas._BGchanged = True    
+    
+    def SelectFile(self, event):
+        """Triggered on opening file"""
+        # selection dialog to select file
+        dlg = wx.FileDialog(self ,style=wx.OPEN,
+                            wildcard=accepted_wildcards)
+        dlg.SetFilterIndex(4) #set 'all files' as default
+        if dlg.ShowModal() == wx.ID_OK:
+            filepath = dlg.GetPath()
+        else:
+            return
+        
+        # load file
+        self.displayimage.LoadAndDisplayImage(filepath)
+        
+        #create a new playlist and display
+        self.InitializeSplitter()
+        self.playlist = PlayList(filepath)
+        self.DisplayPlaylist()
+    
+    def DisplayPlaylist(self):
+        """Display a new playlist in the listbox"""
+        self.listbox.Clear()
+        for filename in self.playlist.playlist:
+            self.listbox.Append(os.path.split(filename)[1])
+            
+        self.listbox.SetSelection(self.playlist.nowshowing)
+    
+    def SelectNextImage(self,event):
+        self.CleanUp()
+        self.playlist.nowshowing += 1
+        if self.playlist.nowshowing == len(self.playlist.playlist):
+            self.playlist.nowshowing = 0
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                                self.playlist.nowshowing])
+        #self.BlitSelectedImage()
+        
+    def SelectPrevImage(self,event):
+        self.CleanUp()
+        self.playlist.nowshowing -= 1
+        if self.playlist.nowshowing == -1:
+            self.playlist.nowshowing = len(self.playlist.playlist)-1
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                                self.playlist.nowshowing])
+        #self.BlitSelectedImage()
+       
+    def JumptoImage(self,event):
+        """On double clicking in listbox select that image"""
+        self.CleanUp()
+        self.playlist.nowshowing = self.listbox.GetSelection()
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                            self.playlist.nowshowing])
+        #self.BlitSelectedImage()
     
     def CleanUp(self):
         """Clean up on closing an image"""
@@ -447,16 +518,12 @@ class DisplayImage():
         # data saved with image
         self.data = None #ToDO : may not require
         
-    def LoadAndDisplayImage(self, event):
+    def LoadAndDisplayImage(self, filepath):
         """Load a new image and display"""
-        dlg = wx.FileDialog(self.frame ,style=wx.OPEN,
-                            wildcard=accepted_wildcards)
-        dlg.SetFilterIndex(4) #set 'all files' as default
-        if dlg.ShowModal() == wx.ID_OK:
-            self.filepath = dlg.GetPath()
-        else:
-            return
+        # TODO: handle opening .plst files
+        self.filepath = filepath
         
+        # TODO: handle .plst files
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
@@ -465,13 +532,17 @@ class DisplayImage():
         # load saved information
         self.LoadImageData()
         
+        # create a playlist
+        #self.frame.playlist = PlayList(self.filepath)
+        #self.frame.DisplayPlaylist()
+        
         #TODO: crop and rotate image as per loaded settings
         if self.iscropped:
             self.image = self.CropImage(self.cropframe, "image")
         else:
             self.image = self.uncropped_image
         
-        self.frame.InitializeSplitter()
+        #self.frame.InitializeSplitter()
         self.canvas._BGchanged = True
     
     def LoadImageData(self):
@@ -895,6 +966,43 @@ class Doodle():
     def Clear(self, event):
         self.lines = []
         self.window.Refresh()
+        
+
+#--------------------------------------------------------------------------
+class PlayList():
+    """The list of image files to show"""
+    def __init__(self,filename):
+        """Initialize when a file is opened"""
+        self.playlist = []
+        self.nowshowing = 0   #current position in list
+        
+        # Open playlist file
+        if filename.endswith('.plst'):
+            self.playlistfile = filename
+            self.OpenPlaylist()
+        
+        # Or an image file (already filtered at selection)
+        else:
+            self.CreatePlayList(filename)
+    
+    def CreatePlayList(self, filename):
+        """
+        Make a playlist by listing all image files in the directory beginning
+        from the selected file
+        """
+        dirname,currentimage = os.path.split(filename)
+        allfiles = os.listdir(dirname)
+                
+        for eachfile in allfiles:
+            if os.path.splitext(eachfile)[1].lower() in ['.bmp','.png',
+                                        '.jpg','.jpeg','.tif','.tiff']:
+                self.playlist.append(os.path.join(dirname,eachfile))
+        self.playlist.sort()
+        self.nowshowing = self.playlist.index(filename)
+                        
+    def OpenPlayList(self,event,filename):
+        """open an existing playlist"""
+        self.playlist = filename.read().split(os.linesep).strip()
 
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
