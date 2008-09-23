@@ -356,7 +356,9 @@ class Canvas(wx.Window):
                 self.SetCursor(wx.NullCursor)
                 self.activetool = None
                 
-                self.frame.displayimage.CropImage(cropframe, "canvas")
+                self.frame.displayimage.image = \
+                    self.frame.displayimage.CropImage(cropframe, "canvas")
+                self._BGchanged = True
                 
             else:
                 self.rubberband.handleMouseEvents(event)
@@ -489,6 +491,27 @@ class Canvas(wx.Window):
             
         else:
             self.activetool = "doodle"
+            
+    def TranslateFrame(self, frame, rotation, imagewidth, imageheight):
+        """Utility function to translate frame coordinates according
+        to rotation in multiples of 90 degrees. Frame is tuple (x1, y1, x2, y2).
+        """
+        rotation = rotation % 4 # make it modulo 4
+        (x1, y1, x2, y2) = frame
+        
+        if rotation == 0:
+            return frame
+        
+        elif rotation  == 1:
+            return (y1, imagewidth-x2, y2, imagewidth-x1)
+        
+        elif rotation == 2:
+            return (imagewidth-x2, imageheight-y2, imagewidth-x1, imageheight-y1)
+        
+        elif rotation == 3:
+            return (imageheight-y2, x1, imageheight-y1, x2)
+            
+       
 #------------------------------------------------------------------------------
 
 class DisplayImage():
@@ -523,26 +546,27 @@ class DisplayImage():
         # TODO: handle opening .plst files
         self.filepath = filepath
         
+        
         # TODO: handle .plst files
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
             pass # TODO: catch errors and display error message
         
+        print "original size = ", self.uncropped_image.size
         # load saved information
         self.LoadImageData()
         
-        # create a playlist
-        #self.frame.playlist = PlayList(self.filepath)
-        #self.frame.DisplayPlaylist()
-        
-        #TODO: crop and rotate image as per loaded settings
+        # crop image as per saved frame
         if self.iscropped:
-            self.image = self.CropImage(self.cropframe, "image")
+            self.image = self.uncropped_image.crop(self.cropframe)
+            #self.image = self.CropImage(self.cropframe, "image")
         else:
             self.image = self.uncropped_image
         
-        #self.frame.InitializeSplitter()
+        # rotate image to match saved rotation
+        self.image = self.Rotate(self.image, self.rotation)
+            
         self.canvas._BGchanged = True
     
     def LoadImageData(self):
@@ -564,14 +588,19 @@ class DisplayImage():
         else:
             self.data = self.defaultdata #TODO: Should not need it here
             
+        if self.cropframe != (0,0,0,0):
+            self.iscropped = True
+            
         self.loaded_data = copy.deepcopy(self.data) #copy of the data that is loaded
             
+        print self.loaded_data
+        
     def SaveImageData(self):
         """Save the image data - but only if data has changed"""
         # collect all data
         self.data["note"] = self.frame.notepad.GetValue() 
         self.data["calibration"] = self.canvas.calibration
-        self.data["rotation"] = self.rotation
+        self.data["rotation"] = self.rotation % 4 # modulo 4 - remove extra loops
         self.data["cropframe"] = self.cropframe
 
         # save data if it has changed
@@ -591,6 +620,8 @@ class DisplayImage():
                 if status != 0:
                     pass
                     #TODO: raise error
+        
+        print "saved data = ", self.data
         
     def SaveImage(self, event):
         """
@@ -641,9 +672,24 @@ class DisplayImage():
         """Rotate the image 90 deg clockwise.
         Will reset the world coordinates"""
         self.image = self.image.transpose(Image.ROTATE_270)
-        self.rotation -= 1
+        self.rotation += 1
         self.canvas.resetFG() # since coords have changed
         self.canvas._BGchanged = True
+        
+    def Rotate(self, image, rotation):
+        """Handle rotation of 90, 180 and 270 degrees"""
+        rotation = rotation % 4
+        
+        if rotation == 0:
+            pass
+        elif rotation == 1:
+            image = image.transpose(Image.ROTATE_270)
+        elif rotation == 2:
+            image = image.transpose(Image.ROTATE_180)
+        elif rotation == 3:
+            image = image.transpose(Image.ROTATE_90)
+            
+        return image
         
     def ChooseCropFrame(self, event):
         """Choose the frame to crop image using a rubberband"""
@@ -652,17 +698,16 @@ class DisplayImage():
         
         else:
             self.image = self.uncropped_image
+            self.cropframe = (0,0,0,0)
             self.iscropped = False
             self.canvas._BGchanged = True
         
     def CropImage(self, cropframe, coord_reference):
-        """Crop the image.
-        crop frame is the outer frame.
+        """Crop the image. Crop frame is the outer frame.
         This can be in reference to the image or the canvas"""
-        # convert coords to refer to image
+        
         # for frame coords derived from canvas, first correct for image offset on canvas
         # then correct for scaling value so that coords apply to original image
-                    
         if coord_reference == "canvas":
             cropframe = (cropframe[0] - self.canvas.xoffset,
                          cropframe[1] - self.canvas.yoffset,
@@ -670,11 +715,30 @@ class DisplayImage():
                          cropframe[3] - self.canvas.yoffset)
             self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
                                           for coord in cropframe)
-                
-        self.image = self.uncropped_image.crop(self.cropframe)
+
+        # correct cropframe for current rotation of canvas so that cropframe
+        # applies to unrotated image
+        
+        # obtain size of 'original image' in current orientation
+        width, height = self.uncropped_image.size
+        if self.rotation % 2 == 1: # odd rotation means w and h are swapped
+            width, height = height, width
+        
+        # translate cropframe to unrotated image
+        
+        print 'before translation: ', self.cropframe
+        self.cropframe = self.canvas.TranslateFrame(self.cropframe,
+                                        self.rotation, width, height)
+        print 'after translation: ', self.cropframe
+        
+        # now crop and rotate
+        cropped_image = self.uncropped_image.crop(self.cropframe)
+        cropped_rotated_image = self.Rotate(cropped_image, self.rotation)
         
         self.iscropped = True
         self.canvas._BGchanged = True
+        
+        return cropped_rotated_image
         
     def CloseImage(self):
         """Things to do before closing image"""
