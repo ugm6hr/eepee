@@ -357,7 +357,7 @@ class Canvas(wx.Window):
                 self.activetool = None
                 
                 self.frame.displayimage.image = \
-                    self.frame.displayimage.CropImage(cropframe, "canvas")
+                    self.frame.displayimage.CropImage(cropframe)
                 self._BGchanged = True
                 
             else:
@@ -697,24 +697,26 @@ class DisplayImage():
             self.canvas.activetool = "rubberband"
         
         else:
+            # uncrop - reset crop frame, but rotate to current state
             self.image = self.uncropped_image
+            self.image = self.Rotate(self.image, self.rotation)
             self.cropframe = (0,0,0,0)
             self.iscropped = False
             self.canvas._BGchanged = True
         
-    def CropImage(self, cropframe, coord_reference):
-        """Crop the image. Crop frame is the outer frame.
-        This can be in reference to the image or the canvas"""
+    def CropImage(self, cropframe):
+        """Crop the image. Crop frame is the outer frame"""
         
-        # for frame coords derived from canvas, first correct for image offset on canvas
-        # then correct for scaling value so that coords apply to original image
-        if coord_reference == "canvas":
-            cropframe = (cropframe[0] - self.canvas.xoffset,
-                         cropframe[1] - self.canvas.yoffset,
-                         cropframe[2] - self.canvas.xoffset,
-                         cropframe[3] - self.canvas.yoffset)
-            self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
-                                          for coord in cropframe)
+        # cropframe coords are derived from rubberband
+        # They are in reference to canvas.
+        # remove offsets so that they refer to image, then
+        # scale so that they reflect pixels
+        cropframe = (cropframe[0] - self.canvas.xoffset,
+                     cropframe[1] - self.canvas.yoffset,
+                     cropframe[2] - self.canvas.xoffset,
+                     cropframe[3] - self.canvas.yoffset)
+        self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
+                                      for coord in cropframe)
 
         # correct cropframe for current rotation of canvas so that cropframe
         # applies to unrotated image
@@ -725,11 +727,8 @@ class DisplayImage():
             width, height = height, width
         
         # translate cropframe to unrotated image
-        
-        print 'before translation: ', self.cropframe
         self.cropframe = self.canvas.TranslateFrame(self.cropframe,
                                         self.rotation, width, height)
-        print 'after translation: ', self.cropframe
         
         # now crop and rotate
         cropped_image = self.uncropped_image.crop(self.cropframe)
