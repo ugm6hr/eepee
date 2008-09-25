@@ -140,6 +140,8 @@ class MyFrame(wx.Frame):
             (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
             (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
             (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+            (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
+            (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
             (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
             (False, ID_NEXT, "Next", "Next image", "next"),

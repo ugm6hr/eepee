@@ -196,7 +196,7 @@ class RubberBand:
             self.hasLetUp = 1
             self.currentlyMoving = None
             self.__normalizeBox()
-            print 'leftup!'
+            
 
         elif event.Moving() and not event.Dragging():
             # Simple mouse movement event
