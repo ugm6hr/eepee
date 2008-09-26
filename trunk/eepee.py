@@ -1,109 +1,40 @@
 #!/usr/bin/env python
+
 from __future__ import division
-import os, sys
-import wx 
-from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Resources, GUIMode
+import sys, os, copy
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 import Image
-import numpy as N
+import wx
+
+from customrubberband import RubberBand
 from geticons import getBitmap
+#------------------------------------------------------------------------------
+# Global variables
+ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
+ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
+ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()  
+ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
+ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
+ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
 
-#------------------------------------------------------------------------------#
-ID_OPEN     =   wx.NewId() ;   ID_UNSPLIT = wx.NewId()
-ID_SAVE     =   wx.NewId() ;   ID_ZOOMIN = wx.NewId()
-ID_EXIT     =   wx.NewId()  ;  ID_ZOOMOUT = wx.NewId()
-ID_ZOOMFIT  =   wx.NewId()  ; ID_RUBBERBAND = wx.NewId()
-ID_ROTATERIGHT = wx.NewId()
-ID_ROTATELEFT = wx.NewId()
-
-#-------------------------------------------------------------------------------
+#last png is for default save ext
+accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
+accepted_wildcards = 'PNG|*.png|TIF|*.tif;*.tiff|' +\
+                     'JPG|*.jpg;*.jpeg|BMP|*.bmp|' +\
+                     'All files|*.*'
+image_handlers = [wx.BITMAP_TYPE_PNG, wx.BITMAP_TYPE_TIF,
+                  wx.BITMAP_TYPE_JPEG, wx.BITMAP_TYPE_BMP, wx.BITMAP_TYPE_PNG]
+                  
+#------------------------------------------------------------------------------
 class MyFrame(wx.Frame):
-    """The outer frame"""
-    def __init__(self,parent, id,title):
-        # Create frame and maximize
-        wx.Frame.__init__(self, parent, id, title, pos=(0,0),
+    def __init__(self, parent, title):
+        wx.Frame.__init__(self, parent, -1, title,pos=(0,0),
                           style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
-        
-        # status bar 
-        self.statusbar = self.CreateStatusBar()
-        
-        #----------------------------------------------------------------------
-        # menubar
-        MenuBar = wx.MenuBar()
-
-        file_menu = wx.Menu()
-        file_menu.Append(ID_OPEN, "&Open","Open file")
-        file_menu.Append(ID_SAVE, "&Save","Save Image")
-        file_menu.Append(ID_EXIT, "&Exit","Exit")
-   
-        image_menu = wx.Menu()
-        image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
-        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
-        image_menu.Append(ID_ZOOMOUT, "Zoom out", "Zoom out")
-        image_menu.Append(ID_ZOOMFIT, "Zoom to fit", "Zoom to fit")
-        image_menu.Append(ID_ZOOMIN, "Zoom in", "Zoom in")
-        
-        MenuBar.Append(file_menu, "&File")
-        MenuBar.Append(image_menu, "&Image")
-        
-        self.SetMenuBar(MenuBar)
-        
-        #----------------------------------------------------------------------
-        ## TOOLBAR
-        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL | 
-                                          wx.NO_BORDER | wx.TB_FLAT)
-        self.toolbar.SetToolBitmapSize((22,22))
-
-        self.toolbar.AddLabelTool(ID_OPEN, 'Open',getBitmap('open')
-                                             , longHelp='Open a file')
-        self.toolbar.AddLabelTool(ID_SAVE, 'Save',  getBitmap('save')
-                                 , longHelp='Save the image with stamped calipers')
-        
-        self.toolbar.AddSeparator()        
-        self.toolbar.AddLabelTool(ID_EXIT, 'Exit', getBitmap("exit")
-                                  , longHelp='Exit the application')
-        
-        self.toolbar.AddSeparator()
-        self.toolbar.AddCheckLabelTool(ID_ZOOMOUT, 'Zoom out',
-                                  wx.Bitmap('icons/zoomout.png'),
-                                  longHelp = 'Zoom out')
-        self.toolbar.AddLabelTool(ID_ZOOMFIT, 'Fit',
-                                  wx.Bitmap('icons/zoomfit.png'),
-                                  longHelp = 'Zoom to fit')
-        self.toolbar.AddCheckLabelTool(ID_ZOOMIN, 'Zoom in',
-                                  wx.Bitmap('icons/zoomin.png'),
-                                  longHelp = 'Zoom in') 
-        
-        self.toolbar.AddSeparator()
-        self.toolbar.AddCheckLabelTool(ID_UNSPLIT, 'Toggle sidepanel',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
-                                  longHelp = 'Toggle sidepanel')
-        
-        self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_ROTATERIGHT, 'Rotate right',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
-                                  longHelp = 'Rotate right')
-        self.toolbar.AddLabelTool(ID_ROTATELEFT, 'Rotate Left',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
-                                  longHelp = 'Rotate Left')
-        self.toolbar.AddLabelTool(ID_RUBBERBAND, 'Choose frame',
-                                  wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE,
-                                   wx.ART_TOOLBAR),
-                                  longHelp = 'Choose frame')
-        
-        self.toolbar.Realize()
-        
-        #----Custom cursors----------------------------------------------------
-        img = Resources.getMagPlusImage()
-        img.SetOptionInt(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 9)
-        img.SetOptionInt(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 9)
-        self.MagPlusCursor = wx.CursorFromImage(img)
-
-        
-
         
         #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
@@ -112,77 +43,134 @@ class MyFrame(wx.Frame):
                 
         self.splitter = wx.SplitterWindow(self.basepanel, style=wx.SP_3D)
         self.splitter.SetMinimumPaneSize(10)
-        
+               
         # The windows inside the splitter are a
-        # 1. The drawing canvas - float canvas form images
+        # 1. canvas - A window in which all the drawing is done
         # 2. A notebook panel holding the playlist and notes
-        self.canvas = DrawingCanvas(self.splitter)
-        self.notebookpanel = wx.Panel(self.splitter, -1)
+        self.canvas = Canvas(self.splitter)
+        self.displayimage = DisplayImage(self)
         
-        self.nb = wx.Notebook(self.notebookpanel) # will be a panel later
+        self.notebookpanel = wx.Panel(self.splitter, -1)
+        self.nb = wx.Notebook(self.notebookpanel)
+        self.notepadpanel = wx.Panel(self.nb, -1)
+                
         self.listbox = wx.ListBox(self.nb, -1)
-        self.notepad = wx.TextCtrl(self.nb, -1)
+        self.notepad = wx.TextCtrl(self.notepadpanel, -1,style=wx.TE_MULTILINE)
+        
         self.nb.AddPage(self.listbox, "Playlist")
-        self.nb.AddPage(self.notepad, "Notes")
+        self.nb.AddPage(self.notepadpanel, "Notes")
+
+        # unsplit splitter for now, split later when size can be calculated
+        self.splitter.SplitVertically(self.canvas,self.notebookpanel)
+        self.splitter.Unsplit()
         
         #---- All the sizers --------------------------------------
         notebooksizer = wx.BoxSizer()
         notebooksizer.Add(self.nb, 1, wx.EXPAND, 0)
         self.notebookpanel.SetSizer(notebooksizer)
         
+        notepadsizer = wx.BoxSizer()
+        notepadsizer.Add(self.notepad, 1, wx.EXPAND, 0)
+        self.notepadpanel.SetSizer(notepadsizer)
+        
         splittersizer = wx.BoxSizer()
         splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.basepanel.SetSizer(splittersizer)
-                
         
+        #------------------------------
+        self._buildMenuBar()
+        self._buildToolBar()
+        self.CreateStatusBar()
+        
+        #-------------------------------------
+        self.Bind(wx.EVT_MENU, self.SelectFile, id=ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_QUIT)
+        self.Bind(wx.EVT_MENU, self.displayimage.SaveImage, id=ID_SAVE)
+        self.Bind(wx.EVT_MENU, self.ToggleSplit, id=ID_UNSPLIT)
+        self.Bind(wx.EVT_MENU, self.displayimage.RotateLeft, id=ID_ROTATELEFT)
+        self.Bind(wx.EVT_MENU, self.displayimage.RotateRight, id=ID_ROTATERIGHT)
+        self.Bind(wx.EVT_MENU, self.displayimage.ChooseCropFrame, id=ID_CROP)
+        self.Bind(wx.EVT_MENU, self.canvas.NewCaliper, id=ID_CALIPER)
+        self.Bind(wx.EVT_MENU, self.canvas.Calibrate, id=ID_CALIBRATE)
+        self.Bind(wx.EVT_MENU, self.canvas.ToggleDoodle, id = ID_DOODLE)
+        self.Bind(wx.EVT_MENU, self.SelectPrevImage, id = ID_PREVIOUS)
+        self.Bind(wx.EVT_MENU, self.SelectNextImage, id = ID_NEXT)
+        
+        self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
+        #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
-        #--------------------------------------------------------
-        self.accepted_formats = 'Supported formats|' + \
-                    '*.png;*.PNG;*.tif;*.TIF;' +\
-                    '*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;' +\
-                    '*.bmp;*.BMP;*.gif;*.GIF'     
-        self._FGchanged = False
-        self._BGchanged = False
-        self.image = None
-        self.timer = wx.Timer(self, -1)
-        self.timeout = 0
-        self.activetool = None
-        self.defaultSBcolor = self.statusbar.GetBackgroundColour()
+    def _buildMenuBar(self):
+        """Build the menu bar"""
+        MenuBar = wx.MenuBar()
+
+        file_menu = wx.Menu()
+        file_menu.Append(ID_OPEN, "&Open","Open file")
+        file_menu.Append(ID_SAVE, "&Save","Save Image")
+        file_menu.Append(ID_QUIT, "&Exit","Exit")
+   
+        edit_menu = wx.Menu()
+        edit_menu.Append(ID_CALIBRATE, "Cali&brate", "Calibrate image")
+        edit_menu.Append(ID_CALIPER, "New &Caliper", "Start new caliper")
+        edit_menu.Append(ID_DOODLE, "Doodle", "Doodle on the canvas")
         
-        #-------- Bindings ----------------------------------------------------
-        wx.EVT_MENU(self,  ID_OPEN, self.OnOpen)
-        wx.EVT_MENU(self,  ID_SAVE, self.OnSave)
+        image_menu = wx.Menu()
+        image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
+        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
+        image_menu.Append(ID_CROP, "Crop", "Crop the image")
         
-        wx.EVT_MENU(self, ID_ZOOMOUT, self.ZoomOut)
-        wx.EVT_MENU(self, ID_ZOOMFIT, self.ZoomFit)
-        wx.EVT_MENU(self, ID_ZOOMIN, self.ZoomIn)
-        wx.EVT_MENU(self, ID_ROTATELEFT, self.canvas.RotateLeft)
-        wx.EVT_MENU(self, ID_ROTATERIGHT, self.canvas.RotateRight)
-        wx.EVT_MENU(self, ID_RUBBERBAND, self.ChooseFrame)
+        playlist_menu = wx.Menu()
+        playlist_menu.Append(ID_PREVIOUS, "Previous", "Previous image")
+        playlist_menu.Append(ID_NEXT, "Next", "Next image")
         
-        wx.EVT_MENU(self, ID_UNSPLIT, self.SplitUnSplit)
+        MenuBar.Append(file_menu, "&File")
+        MenuBar.Append(edit_menu, "&Edit")
+        MenuBar.Append(image_menu, "&Image")
+        MenuBar.Append(playlist_menu, "&Playlist")
         
-        wx.EVT_MENU(self,  ID_EXIT, self.OnExit)
+        self.SetMenuBar(MenuBar)
+
+    def _buildToolBar(self):
+        """Build the toolbar"""
+        ## list of tools - can be made editable in preferences
+        # (checktool?, id, "short help", "long help", "getimage name")
+        tools = [
+            (False, ID_OPEN, "Open", "Open file", "open"),
+            (False, ID_SAVE, "Save", "Save file", "save"),
+            (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
+            (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
+            (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+            (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+            (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
+            (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
+            (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
+            (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
+            (False, ID_NEXT, "Next", "Next image", "next"),
+            (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
+            ]
         
-        self.Bind(wx.EVT_IDLE, self.RefreshDrawing)
-        self.Bind(wx.EVT_TIMER, self.OnTimer)
-        
-        # works only with svn version of floatcanvas
-        self.canvas.Bind(FloatCanvas.EVT_MOTION, self.OnMotion) 
-        self.canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.OnLeftUp)
-        
-        # Redraw canvas background on changing splitter position
-        self.Bind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.OnSplitReposition)
-        
-        # call as future event so that size can be calculated
-        wx.FutureCall(1000, self.LateInit)
-    
-    def LateInit(self):
+        self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL|wx.NO_BORDER|
+                                          wx.TB_FLAT)
+        self.toolbar.SetToolBitmapSize((22,22))
+
+        for tool in tools:
+            checktool, id, shelp, lhelp, bmp = tool
+            if checktool:
+                self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),
+                                               longHelp=lhelp)
+            else:
+                self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),
+                                          longHelp=lhelp)
+                
+        self.toolbar.Realize()
+
+    def InitializeSplitter(self):
+        """Initialize sash position"""
+        # Do this for the first time when loading first image
+        # For other images, it serves to reset sash position
         self.splitter.SplitVertically(self.canvas,self.notebookpanel)
         self.splitter.SetSashPosition(self.GetSize()[0] - 160)
-        self.Bind(wx.EVT_SIZE, self.OnSize)
     
-    def SplitUnSplit(self, event):
+    def ToggleSplit(self, event):
         """Unsplit or resplit the splitter"""
         if self.splitter.IsSplit():
             self.splitter.Unsplit()
@@ -190,245 +178,910 @@ class MyFrame(wx.Frame):
             self.splitter.SplitVertically(self.canvas,self.notebookpanel)
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
         
-        self._BGchanged = True
+        # if an image is loaded, trigger a redraw as canvas size changes
+        if self.displayimage.image:
+            self.canvas._BGchanged = True    
     
-    def OnLeftUp(self, event):
-        """Handle left click"""
-        x,y = event.GetCoords()
-        if self.activetool == "zoomout":
-            self.canvas.Zoom(0.9, (x,y))
-        elif self.activetool == "zoomin":
-            self.canvas.Zoom(1.1, (x,y))
+    def SelectFile(self, event):
+        """Triggered on opening file"""
+        # selection dialog to select file
+        dlg = wx.FileDialog(self ,style=wx.OPEN,
+                            wildcard=accepted_wildcards)
+        dlg.SetFilterIndex(4) #set 'all files' as default
+        if dlg.ShowModal() == wx.ID_OK:
+            filepath = dlg.GetPath()
+        else:
+            return
+        
+        # load file
+        self.displayimage.LoadAndDisplayImage(filepath)
+        
+        #create a new playlist and display
+        self.InitializeSplitter()
+        self.playlist = PlayList(filepath)
+        self.DisplayPlaylist()
+    
+    def DisplayPlaylist(self):
+        """Display a new playlist in the listbox"""
+        self.listbox.Clear()
+        for filename in self.playlist.playlist:
+            self.listbox.Append(os.path.split(filename)[1])
+            
+        self.listbox.SetSelection(self.playlist.nowshowing)
+    
+    def SelectNextImage(self,event):
+        self.CleanUp()
+        self.playlist.nowshowing += 1
+        if self.playlist.nowshowing == len(self.playlist.playlist):
+            self.playlist.nowshowing = 0
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                                self.playlist.nowshowing])
+        #self.BlitSelectedImage()
+        
+    def SelectPrevImage(self,event):
+        self.CleanUp()
+        self.playlist.nowshowing -= 1
+        if self.playlist.nowshowing == -1:
+            self.playlist.nowshowing = len(self.playlist.playlist)-1
+        self.listbox.SetSelection(self.playlist.nowshowing)
+            
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                                self.playlist.nowshowing])
+        #self.BlitSelectedImage()
+       
+    def JumptoImage(self,event):
+        """On double clicking in listbox select that image"""
+        self.CleanUp()
+        self.playlist.nowshowing = self.listbox.GetSelection()
+        self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
+                                            self.playlist.nowshowing])
+        #self.BlitSelectedImage()
+    
+    def CleanUp(self):
+        """Clean up on closing an image"""
+        self.displayimage.CloseImage()
+    
+    def OnQuit(self, event):
+        """On quitting the application"""
+        self.CleanUp()
+        sys.exit(0)
+        
+#------------------------------------------------------------------------------    
+class Canvas(wx.Window):
+    def __init__(self, parent):
+        wx.Window.__init__(self, parent, -1)
+        self.SetBackgroundColour('white')
+        self.frame = wx.GetTopLevelParent(self)
+                
+        self.rubberband = RubberBand(self)
+        self.doodle = Doodle(self)
+        
+        # Image height will always be 1000 units unless zoomed in
+        self.maxheight = 1000
+        
+        # calibration  =   milliseconds / world_units
+        self.calibration = 0  #0 means uncalibrated
+        
+        #one tool may be active at any time
+        self.activetool = None
+        
+        # caliper list is a list of all calipers
+        self.caliperlist = []
+        self.activecaliperindex = -1 #only one caliper is active
+        
+        # flag to check if image is loaded
+        self.resizedimage = None
+        
+        self._BGchanged = False
+        self._FGchanged = False
+        self._doodlechanged = False
+        
+        self.Bind(wx.EVT_SIZE, self.OnResize)
+        self.Bind(wx.EVT_IDLE, self.OnIdle)
+        self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
+
+    def handleMouseEvents(self, event):
+        """handle mouse events when no tool is active"""
+        if self.resizedimage:
+            pos = event.GetPosition()
+            worldx, worldy = (self.PixelsToWorld(pos.x, 'xaxis'),
+                              self.PixelsToWorld(pos.y, 'yaxis'))
+            
+            if event.Moving():
+                # check for hitobject and mark them
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
+                    
+            elif event.LeftDown():
+                # check for hit object and activate it
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
+                if caliper:
+                    self.activetool = 'caliper'
+                    self.activecaliperindex = caliperindex
+                    if hit_type == 1:
+                        #flip the caliper legs, then just move second leg
+                        caliper.x1, caliper.x2 = caliper.x2, caliper.x1
+                        caliper.state = 2
+                    elif hit_type == 2: #move second leg
+                        caliper.state = 2
+                    elif hit_type == 3: #move whole caliper
+                        caliper.x1offset = worldx - caliper.x1
+                        caliper.x2offset = caliper.x2 - worldx
+                        caliper.state = 4
+                        
+            elif event.RightDown():
+                # if caliper hittable - delete it
+                caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
+                if caliper:
+                    self.caliperlist.remove(caliper)
+                    self._FGchanged = True
         else:
             pass
         
-    # The zoom changes use only floatcanvas's zoom,
-    # so are not antialiased.
-    # A better implementation will be to resize the image with
-    # PIL
-    def ZoomOut(self, type):
-        """Zoom out of the bg"""
-        # TODO: Maybe remove the zoomout tool
-        if self.activetool == "zoomout":
-            self.canvas.SetMode(GUIMode.GUIMouse())
-            self.activetool = None
-        else:
-            self.toolbar.ToggleTool(ID_ZOOMIN, False)
-            self.canvas.SetMode(GUIMode.GUIZoomOut())
-            self.activetool = "zoomout"
+    def OnResize(self, event):
+        """canvas resize triggers bgchanged flag so that it will
+        be redrawn on next idle event"""
+        # update / initialize height and width
+        self.width, self.height = self.GetSize()
         
-    def ZoomFit(self, type):
-        """Zoom into the bg"""         
-        self.canvas.SetMode(GUIMode.GUIMouse())
-        self.toolbar.ToggleTool(ID_ZOOMIN, False)
-        self.toolbar.ToggleTool(ID_ZOOMOUT, False)
-        self.activetool = None
-        self.canvas.ZoomToBB()
+        # update / create the buffer for the buffered dc
+        self.buffer = wx.EmptyBitmap(self.width, self.height)
         
-    def ZoomIn(self, type):
-        """Zoom into the bg"""
-        self.canvas.SetMode(GUIMode.GUIZoomIn())
-        if self.activetool == "zoomin":
-            self.canvas.SetMode(GUIMode.GUIMouse())
-            self.activetool = None
-        else:
-            self.toolbar.ToggleTool(ID_ZOOMOUT, False)
-            self.canvas.SetMode(GUIMode.GUIZoomIn())
-            self.activetool = "zoomin"
-
-    def ChooseFrame(self, event):
-        self.canvas.SetMode(GUIRubberBand())
-           
-    def OnExit(self, event):
-        """Exit the application"""
-        sys.exit()
-    
-    def OnSize(self, event):
-        self.splitter.SetSashPosition(self.GetSize()[0] - 120)
-        if self.canvas.image:
+        if self.resizedimage: # only if image is loaded
             self._BGchanged = True
-        self.Refresh()
         
-    def OnSplitReposition(self, event):
-        if self.canvas.image:
-            self._BGchanged = True
-        self.Refresh()
+    def OnIdle(self, event):
+        """Redraw if there is a change"""
+        if self._BGchanged or self._FGchanged:
+            dc = wx.BufferedDC(wx.ClientDC(self), self.buffer,
+                               wx.BUFFER_CLIENT_AREA)
+            dc.Clear()  #clear old image if still there        
         
-    def OnOpen(self, event):
-        """Open a file, load and display it"""        
-        dlg = wx.FileDialog(self,style=wx.OPEN,wildcard=self.accepted_formats)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.filepath = dlg.GetPath()
-            #try:
-            # 
-            size = tuple([int(dim*0.8) for dim in self.splitter.GetSize()])
-            self.canvas.image = Image.open(self.filepath,'r')
-            self.canvas.RefreshBackground()
-            #intialising rotation count to 0
-            self.rotation = 0
-            #except:
-                #TODO: Handle different exceptions
-             #   self.DisplayError("Error: %s%s" %(sys.exc_info()[0], sys.exc_info()[1] ))
-            
-        else:
-            return
-    
-    
-    def OnSave(self, event):
-        """Save image currently on canvas"""
-        dlg = wx.FileDialog(self, "Save image as...", 
-                            style=wx.SAVE | wx.OVERWRITE_PROMPT,
-                            wildcard=self.accepted_formats)
-        if dlg.ShowModal() == wx.ID_OK:
-            savefilename = dlg.GetPath()
-            dlg.Destroy()
-        else:
-            dlg.Destroy()
-            return
-        
-        # if not a valid extension (or if no extension), save as png
-        # gif not supported for now
-        extension  = os.path.splitext(savefilename)[1].lower()
-        canvas = self.canvas.Canvas
-        try:
-            
-            if extension in ['.tif', '.tiff']:
-                canvas.SaveAsImage(savefilename, wx.BITMAP_TYPE_TIF)
-            elif extension in ['.jpg', '.jpeg']:
-                canvas.SaveAsImage(savefilename, wx.BITMAP_TYPE_JPEG)
-            elif extension == '.bmp':
-                canvas.SaveAsImage(savefilename, wx.BITMAP_TYPE_BMP)
-            else:
-                savefilename = os.path.splitext(savefilename)[0] + '.png'
-                canvas.SaveAsImage(savefilename, wx.BITMAP_TYPE_PNG)
-            
-        except:
-            print 'Error' # TODO: Catch specific errors and handle meaningfully
-    
-       
-    def OnMotion(self, event):
-        self.x, self.y = event.Coords
-        self.statusbar.SetStatusText("%.2f, %.2f"%tuple(event.Coords))
-        #self._FGchanged = True
-        
-    def RefreshDrawing(self, event):
         if self._BGchanged:
-            self.canvas.RefreshBackground()
-            self._BGchanged = False
+            self.ProcessBG()
+            #dc.Clear()
+            self.Draw(dc)
+           
+        elif self._FGchanged:
+            #dc.Clear()
+            self.Draw(dc)
             
-        if self._FGchanged:
-            self.canvas.DrawForeground()
-            self._FGchanged = False
-        
-    def DisplayError(self, message):
-        """Display error message to user"""
-        self.statusbar.SetBackgroundColour('RED')
-        self.statusbar.SetStatusText(message)
-        #self.statusbar.Refresh() # does not work on windows
-        self.statusbar.ClearBackground()
-        self.timer.Start(50)
+    def OnMouseEvents(self, event):
+        """Handle mouse events depending on active tool"""
+        # ----- Rubberband -------------------------------
+        if self.activetool == "rubberband":
+            if event.LeftUp(): # finished selecting crop extent
+                cropframe = self.rubberband.getCurrentExtent()
 
-    def OnTimer(self, event):
-        """Handle timeout for the error message display"""
-        self.timeout += 1
-        if self.timeout == 25:
-            self.statusbar.SetBackgroundColour(self.defaultSBcolor)#'#E0E2EB')
-            self.statusbar.Refresh()
-            self.timer.Stop()
-            self.timeout = 0
-        
-#---------------------------------------------------------------------
-class DrawingCanvas(FloatCanvas.FloatCanvas):
-    """A Floatcanvas object for drawing"""
-    def __init__(self, parent):
-        FloatCanvas.FloatCanvas.__init__(self, parent, Debug = 0)
-        self.frame = wx.GetTopLevelParent(self)
-        self.image = None
-        
-        # set scaling limits - otherwise crashes in zooming too much
-        self.MinScale = 0.2
-        self.MaxScale = 4
-        
-    def RefreshBackground(self):
-        """Draw the background image"""
-        # since floatcanvas doesnt resize bitmaps with antialias,
-        # all the resizing is done with PIL
-        self.ScaleImage()
+                self.rubberband.reset()
+                self.SetCursor(wx.NullCursor)
+                self.activetool = None
+                
+                self.frame.displayimage.image = \
+                    self.frame.displayimage.CropImage(cropframe)
+                self._BGchanged = True
+                
+            else:
+                self.rubberband.handleMouseEvents(event)
+                
+        elif self.activetool == "caliper":
+            # hand the event to the active caliper
+            self.caliperlist[self.activecaliperindex].handleMouseEvents(event)
             
-        # convert the PIL image into a wx image                
-        self.displayimage = apply(wx.EmptyImage, self.resizedimage.size)
-        self.displayimage.SetData(self.resizedimage.convert("RGB").tostring())
+        elif self.activetool == "calibrate":
+            self.calibrate_caliper.handleMouseEvents(event)
+            
+        elif self.activetool == "doodle":
+            self.doodle.handleMouseEvents(event)
         
-        # draw background with scaled bitmap centered at 0,0        
-        self.ClearAll()
-        self.bg = self.AddScaledBitmap(self.displayimage,(0,0),
-                                       Height=1000, Position="cc")
-        self.ZoomToBB(self.bg.BoundingBox)
+        elif self.activetool == None: #TODO: Move to top
+            self.handleMouseEvents(event)
+
+    def PixelsToWorld(self, coord, axis):
+        """convert from pixels to world units.
+         coord is a single value and axis denoted
+         axis to which it belongs (x or y)"""
+        if axis == 'xaxis':
+            return round((coord - self.xoffset) * self.factor)
+        elif axis == 'yaxis':
+            return round((coord - self.yoffset) * self.factor)
+    
+    def WorldToPixels(self, coord, axis):
+        """convert from world units to pixels.
+         coord is a single value and axis denoted
+         axis to which it belongs (x or y)"""
+        if axis == 'xaxis':
+            return (coord / self.factor) + self.xoffset
+        elif axis == 'yaxis':
+            return (coord / self.factor) + self.yoffset
         
-        print self.Scale
-        
-    def ScaleImage(self):
-        """Resize image to best fit canvas size while preserving aspect ratio"""
-        imagewidth, imageheight = self.image.size
-        canvaswidth, canvasheight = self.GetSize()
+    def ProcessBG(self):
+        """Process the image by resizing to best fit current size"""
+        image = self.frame.displayimage.image
+        imagewidth, imageheight = image.size
         
         # What drives the scaling - height or width
-        if imagewidth / imageheight > canvaswidth / canvasheight:
-            self.scalingvalue = canvaswidth / imagewidth
+        if imagewidth / imageheight > self.width / self.height:
+            self.scalingvalue = self.width / imagewidth
         else:
-            self.scalingvalue = canvasheight / imageheight
+            self.scalingvalue = self.height / imageheight
         
-        # resize
-        self.resizedimage = self.image.resize((int(imagewidth*self.scalingvalue)
-                                          , int(imageheight*self.scalingvalue))
-                                          , Image.ANTIALIAS)
-
-        #Rotation of Image
-    def RotateRight(self,event):
-        self.image = self.image.transpose(Image.ROTATE_90)
-        self.RefreshBackground()
-        ## keep track of rotation to store
-        self.rotation += 1
-        #TODO: what needs to be done to measurement and doodle? 
+                
+        # resize with antialiasing
+        self.resized_width =  int(imagewidth * self.scalingvalue)
+        self.resized_height = int(imageheight * self.scalingvalue)
+        self.resizedimage = image.resize((self.resized_width,
+                                          self.resized_height)
+                                             , Image.ANTIALIAS)
         
-    def RotateLeft(self,event):
-        self.image = self.image.transpose(Image.ROTATE_270)
-        self.RefreshBackground()
-        # keeping count of rotation
-        self.rotation -= 1
-
-#---------------------------------------------------------------------
-class GUIRubberBand(GUIMode.GUIZoomIn):
-    """A custom GUI mode for drawing rubberband"""
-    def __init__(self, canvas=None):
-        GUIMode.GUIZoomIn.__init__(self, canvas)
-        self.StartRBBox = None
-        self.PrevRBBox = None
-        self.Cursor =  wx.NullCursor
         
-    def OnLeftUp(self, event):
-        if event.LeftUp() and not self.StartRBBox is None:
-            self.PrevRBBox = None
-            EndRBBox = event.GetPosition()
-            StartRBBox = self.StartRBBox
-            # if mouse has moved less that ten pixels, don't use the box.
-            EndRBBox = self.Canvas.PixelToWorld(EndRBBox)
-            StartRBBox = self.Canvas.PixelToWorld(StartRBBox)
-            BB = N.array(((min(EndRBBox[0],StartRBBox[0]),
-                            min(EndRBBox[1],StartRBBox[1])),
-                        (max(EndRBBox[0],StartRBBox[0]),
-                            max(EndRBBox[1],StartRBBox[1]))),N.float_)
-            #self.Canvas.ZoomToBB(BB)
+        
+        # factor chosen so that image ht = 1000 U
+        self.factor = self.maxheight / self.resized_height
+        
+        # blit the image centerd in x and y axes
+        self.bmp = self.ImageToBitmap(self.resizedimage)
+        self.imagedc = wx.MemoryDC()
+        self.imagedc.SelectObject(self.bmp)
+        
+        self.xoffset = (self.width-self.resized_width)/2
+        self.yoffset = (self.height-self.resized_height)/2
+            
+    def Draw(self, dc):
+        """Redraw the background and foreground elements"""
+        # blit the buffer on to the screen - BG
+        dc.Blit(self.xoffset, self.yoffset,
+                self.resized_width, self.resized_height, self.imagedc, 0, 0)
+        
+        # draw the calipers
+        for caliper in self.caliperlist:
+            caliper.draw(dc)
+        
+        # doodle lines
+        self.doodle.Draw(dc)
+        
+        self._BGchanged = False 
+        self._FGchanged = False
+        #self._doodlechanged = False
     
-          
-#----------------------------------------------------------------------    
+    def DrawDoodle(self, dc):
+        """Draw the doodle lines without redrawing everything else"""
+        self.doodle.Draw(dc)
+        self._doodlechanged = False
+    
+    def resetFG(self):
+        """When the coords are not preserved, reset all
+        foreground elements to default"""
+        pass
+        
+    def ImageToBitmap(self, img):
+        newimage = apply(wx.EmptyImage, img.size)
+        newimage.SetData(img.convert( "RGB").tostring())
+        bmp = newimage.ConvertToBitmap()
+        return bmp
+    
+    def NewCaliper(self, event):
+        """Start a new caliper"""
+        self.caliperlist.append(Caliper(self))
+        self.activecaliperindex = len(self.caliperlist)-1
+        self.activetool = "caliper"
+        
+    def Calibrate(self, event):
+        """Calibrate / recalibrate image"""
+        self.calibrate_caliper = CalibrateCaliper(self)
+        self.caliperlist.append(self.calibrate_caliper)
+        self.activetool = "calibrate"
+        self.activecaliperindex = len(self.caliperlist)-1
+        
+    def HitObject(self, worldx, worldy):
+        """Find the object that is hittable.
+        This is the object within a defined distance from the given coords"""
+        # find if any caliper is hittable
+        for caliperindex, caliper in enumerate(self.caliperlist):
+            hittable = caliper.isHittable(worldx, worldy)
+            if hittable > 0:
+                return (caliper, caliperindex, hittable)
+        
+        # if nothing is hit
+        return (None, 0, 0)
+    
+    def ToggleDoodle(self, event):
+        """Toggle doodle on or off"""
+        if self.activetool == "doodle":
+            self.activetool = None
+            
+        else:
+            self.activetool = "doodle"
+            
+    def TranslateFrame(self, frame, rotation, imagewidth, imageheight):
+        """Utility function to translate frame coordinates according
+        to rotation in multiples of 90 degrees. Frame is tuple (x1, y1, x2, y2).
+        """
+        rotation = rotation % 4 # make it modulo 4
+        (x1, y1, x2, y2) = frame
+        
+        if rotation == 0:
+            return frame
+        
+        elif rotation  == 1:
+            return (y1, imagewidth-x2, y2, imagewidth-x1)
+        
+        elif rotation == 2:
+            return (imagewidth-x2, imageheight-y2, imagewidth-x1, imageheight-y1)
+        
+        elif rotation == 3:
+            return (imageheight-y2, x1, imageheight-y1, x2)
+            
+       
+#------------------------------------------------------------------------------
+
+class DisplayImage():
+    """The display image and associated functions"""
+    def __init__(self, parent):
+        self.frame = parent
+        self.canvas = self.frame.canvas
+        
+        self.image = None # will be loaded
+
+        # image cropping can be toggled
+        # if prev crop info is stored, this will be true
+        self.iscropped = False
+        self.cropframe = (0,0,0,0) # x1, y1, x2, y2
+        
+        # conversion factor to convert from px to world coords
+        # = 1000 / image height in px
+        self.factor = 0
+        
+        # keep a counter of rotation state, so that it can be saved
+        self.rotation = 0
+        
+        # default data
+        self.defaultdata = {"note" : '', "calibration" : 0,
+                            "rotation" : 0, "cropframe" : (0,0,0,0)}
+        
+        # data saved with image
+        self.data = None #ToDO : may not require
+        
+    def LoadAndDisplayImage(self, filepath):
+        """Load a new image and display"""
+        # TODO: handle opening .plst files
+        self.filepath = filepath
+        
+        
+        # TODO: handle .plst files
+        try:        
+            self.uncropped_image = Image.open(self.filepath, 'r')
+        except:
+            pass # TODO: catch errors and display error message
+        
+        print "original size = ", self.uncropped_image.size
+        # load saved information
+        self.LoadImageData()
+        
+        # crop image as per saved frame
+        if self.iscropped:
+            self.image = self.uncropped_image.crop(self.cropframe)
+            #self.image = self.CropImage(self.cropframe, "image")
+        else:
+            self.image = self.uncropped_image
+        
+        # rotate image to match saved rotation
+        self.image = self.Rotate(self.image, self.rotation)
+            
+        self.canvas._BGchanged = True
+    
+    def LoadImageData(self):
+        """Load the stored data for the image at filepath"""
+        # data is stored pickled with pathname same as image with
+        # '.' in front (hidden on Linux) and '.pkl' as extension
+        self.datafile = os.path.join(os.path.dirname(self.filepath),
+                  "."+os.path.splitext(os.path.basename(self.filepath))[0]+".pkl")
+        if os.path.exists(self.datafile):
+            self.data = pickle.load(open(self.datafile,'r'))
+        
+            # load the variables with default vals if key does not exist
+            self.note = self.data.get("note", '')
+            self.frame.notepad.SetValue(self.note)
+            self.canvas.calibration = self.data.get("calibration", 0)
+            self.rotation = self.data.get("rotation", 0)
+            self.cropframe = self.data.get("cropframe", (0,0,0,0)) # will be in image coords
+        
+        else:
+            self.data = self.defaultdata #TODO: Should not need it here
+            
+        if self.cropframe != (0,0,0,0):
+            self.iscropped = True
+            
+        self.loaded_data = copy.deepcopy(self.data) #copy of the data that is loaded
+            
+        print self.loaded_data
+        
+    def SaveImageData(self):
+        """Save the image data - but only if data has changed"""
+        # collect all data
+        self.data["note"] = self.frame.notepad.GetValue() 
+        self.data["calibration"] = self.canvas.calibration
+        self.data["rotation"] = self.rotation % 4 # modulo 4 - remove extra loops
+        self.data["cropframe"] = self.cropframe
+
+        # save data if it has changed
+        if self.data != self.loaded_data:
+            
+            if os.name == 'posix':
+                pickle.dump(self.data, open(self.datafile, 'w'))
+            
+            # in windows, set file attribute to hidden
+            elif os.name == 'nt':
+                ## have to remove the hidden file because it doesnt have
+                ## write permission
+                if os.path.exists(self.datafile):
+                    os.remove(self.datafile)  
+                pickle.dump(self.data, open(self.datafile, 'w'))
+                status = os.popen("attrib +h \"%s\"" %(self.datafile))
+                if status != 0:
+                    pass
+                    #TODO: raise error
+        
+        print "saved data = ", self.data
+        
+    def SaveImage(self, event):
+        """
+        Save the modified DC as an image.
+        Initialize a memoryDC as an empty bitmap and blit the clientdc 
+        to it. Then we can disconnect the bitmap from the memory dc
+        and save it. 
+        """
+        # copy the clientDC out before getting the savefilename because
+        # the 'shadow' of the save dialog results in a white area on the
+        # saved image.
+        # TODO: save only the image part of the screen
+        context = wx.ClientDC(self.canvas)
+        savebmp = wx.EmptyBitmap(self.canvas.width,self.canvas.height)
+        #convert dc to bitmap
+        memdc = wx.MemoryDC()
+        memdc.SelectObject(savebmp)
+        memdc.Blit(0,0,self.canvas.width,self.canvas.height,context,0,0)
+        memdc.SelectObject(wx.NullBitmap)
+
+        dlg = wx.FileDialog(self.frame, "Save image as...", os.getcwd(),
+                            style=wx.SAVE | wx.OVERWRITE_PROMPT,
+                            wildcard=accepted_wildcards)
+        if dlg.ShowModal() == wx.ID_OK:
+            savefilename = dlg.GetPath()
+            filter_index = dlg.GetFilterIndex()
+            dlg.Destroy()
+        else:
+            dlg.Destroy()
+            return
+        
+        # format to save is dependent on selected wildcard, default to png
+        savefilename += accepted_formats[filter_index]
+        try:
+            savebmp.SaveFile(savefilename, image_handlers[filter_index])
+        except:
+            pass # TODO:
+    
+    def RotateLeft(self, event):
+        """Rotate the image 90 deg counterclockwise.
+        Will reset the world coordinates"""
+        self.image = self.image.transpose(Image.ROTATE_90)
+        self.rotation -= 1
+        self.canvas.resetFG() # since coords have changed
+        self.canvas._BGchanged = True
+        
+    def RotateRight(self, event):
+        """Rotate the image 90 deg clockwise.
+        Will reset the world coordinates"""
+        self.image = self.image.transpose(Image.ROTATE_270)
+        self.rotation += 1
+        self.canvas.resetFG() # since coords have changed
+        self.canvas._BGchanged = True
+        
+    def Rotate(self, image, rotation):
+        """Handle rotation of 90, 180 and 270 degrees"""
+        rotation = rotation % 4
+        
+        if rotation == 0:
+            pass
+        elif rotation == 1:
+            image = image.transpose(Image.ROTATE_270)
+        elif rotation == 2:
+            image = image.transpose(Image.ROTATE_180)
+        elif rotation == 3:
+            image = image.transpose(Image.ROTATE_90)
+            
+        return image
+        
+    def ChooseCropFrame(self, event):
+        """Choose the frame to crop image using a rubberband"""
+        if not self.iscropped:
+            self.canvas.activetool = "rubberband"
+        
+        else:
+            # uncrop - reset crop frame, but rotate to current state
+            self.image = self.uncropped_image
+            self.image = self.Rotate(self.image, self.rotation)
+            self.cropframe = (0,0,0,0)
+            self.iscropped = False
+            self.canvas._BGchanged = True
+        
+    def CropImage(self, cropframe):
+        """Crop the image. Crop frame is the outer frame"""
+        
+        # cropframe coords are derived from rubberband
+        # They are in reference to canvas.
+        # remove offsets so that they refer to image, then
+        # scale so that they reflect pixels
+        cropframe = (cropframe[0] - self.canvas.xoffset,
+                     cropframe[1] - self.canvas.yoffset,
+                     cropframe[2] - self.canvas.xoffset,
+                     cropframe[3] - self.canvas.yoffset)
+        self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
+                                      for coord in cropframe)
+
+        # correct cropframe for current rotation of canvas so that cropframe
+        # applies to unrotated image
+        
+        # obtain size of 'original image' in current orientation
+        width, height = self.uncropped_image.size
+        if self.rotation % 2 == 1: # odd rotation means w and h are swapped
+            width, height = height, width
+        
+        # translate cropframe to unrotated image
+        self.cropframe = self.canvas.TranslateFrame(self.cropframe,
+                                        self.rotation, width, height)
+        
+        # now crop and rotate
+        cropped_image = self.uncropped_image.crop(self.cropframe)
+        cropped_rotated_image = self.Rotate(cropped_image, self.rotation)
+        
+        self.iscropped = True
+        self.canvas._BGchanged = True
+        
+        return cropped_rotated_image
+        
+    def CloseImage(self):
+        """Things to do before closing image"""
+        self.SaveImageData()
+
+#------------------------------------------------------------------------------
+class Caliper():
+    """Caliper is a tool with two vertical lines connected by a bridge"""
+    def __init__(self, canvas):
+        self.canvas = canvas
+        # coordinates are in 'world coordinates'
+        #          x1,y1    x2y1
+        #           |       |
+        #     x1,y2 |_______| x2,y2
+        #           |       |
+        #         x1,y3     x2,y3
+        #
+        # default coordinates
+        self.x1, self.x2 = 0, 0
+        self.y1, self.y2 = 0, 0
+        self.y3 = self.canvas.maxheight
+        
+        self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
+        self.hittable_pen = wx.Pen(wx.Colour(255,0,0), 1, wx.SOLID)
+        
+        # 1 - positioning first caliperleg, 2 - positioning second caliperleg
+        # 3 - positioned both caliperlegs, 4 - repositioning whole caliper
+        # cycle 1 -> 2 -> 3 -> 2 or 4 -> 3
+        self.state = 1
+        
+        # range from mouse to be hittable
+        self.hitrange = 10
+        self.was_hittable = False # true if it becomes hittable
+        # distance between legs
+        self.measurement = 0
+        
+    def draw(self,dc):
+        """draw the caliper on the canvas"""
+        dc.BeginDrawing()
+        dc.SetPen(self.pen)
+        
+        # convert to pixels for drawing
+        x1 = self.canvas.WorldToPixels(self.x1, "xaxis")
+        x2 = self.canvas.WorldToPixels(self.x2, "xaxis")
+        y1 = self.canvas.WorldToPixels(self.y1, "yaxis")
+        y2 = self.canvas.WorldToPixels(self.y2, "yaxis")
+        y3 = self.canvas.WorldToPixels(self.y3, "yaxis")
+        
+        # draw the lines
+        dc.DrawLine(x1, y1, x1, y3) # left vertical
+        dc.DrawLine(x2, y1, x2, y3) # right vertical
+        dc.DrawLine(x1, y2, x2, y2) # horiz
+        
+        self.MeasureAndDisplay(dc)
+        
+        dc.EndDrawing()
+        
+    def MeasureAndDisplay(self, dc):
+        # write measurement
+        if self.state > 1:
+            self.measurement = abs(self.x2 - self.x1) #world coords
+            measurement_units = 'units'
+            if self.canvas.calibration > 0:
+                self.measurement *= self.canvas.calibration
+                measurement_units = 'ms'
+                
+            dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
+                       self.canvas.WorldToPixels((self.x1 + self.x2)/2,'xaxis'),
+                       self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
+        
+        
+    def handleMouseEvents(self, event):
+        """Mouse event handler when caliper is the active tool"""
+        # get mouse position in world coords
+        pos = event.GetPosition()
+        mousex, mousey = (self.canvas.PixelsToWorld(pos.x, 'xaxis'),
+                          self.canvas.PixelsToWorld(pos.y, 'yaxis'))
+        # beginning - this is first caliper being positioned
+        if event.Moving() and self.state == 1:
+            self.x1 = self.x2 = mousex
+            self.canvas._FGchanged = True
+        
+        # fix the first caliper
+        elif event.LeftDown() and self.state == 1:
+            self.state = 2
+            
+        # positioning second caliper
+        elif event.Moving() and self.state == 2:
+            self.x2 = mousex
+            self.y2 = mousey
+            self.canvas._FGchanged = True
+            
+        # fix second caliper
+        elif event.LeftDown() and self.state == 2:
+            self.state = 3
+            self.OnCompletion()
+            self.canvas.activetool = None
+        
+        # move whole caliper
+        elif event.Moving() and self.state == 4:
+            self.x1 = mousex - self.x1offset
+            self.x2 = mousex + self.x2offset
+            self.y2 = mousey
+            self.canvas._FGchanged = True
+        
+        # stop moving whole caliper
+        elif event.LeftDown() and self.state == 4:
+            self.state = 3
+            self.canvas.activetool = None
+            self.activetool = None
+        
+        else:
+            pass
+        
+    def isHittable(self, worldx, worldy):
+        """Is it within hitting range from current mouse position"""
+        if abs(worldx - self.x1) < self.hitrange:
+            if not self.was_hittable:
+                self.MarkAsHittable(1)
+            return 1 #first leg
+        
+        elif abs(worldx - self.x2) < self.hitrange:
+            if not self.was_hittable:
+                self.MarkAsHittable(2)
+            return 2 #second leg
+        
+        
+        elif abs(worldy - self.y2) < self.hitrange and \
+             sorted([worldx, self.x1, self.x2])[1] == worldx:
+            # if mouse x is between x1 and x2
+            if not self.was_hittable:
+                self.MarkAsHittable(3)
+            return 3 #horizontal (whole caliper)
+        
+        else:
+            if self.was_hittable:
+                self.was_hittable = False
+                self.canvas._FGchanged = True
+            return 0
+        
+    def MarkAsHittable(self, type):
+        """Mark caliper as hittable.
+        type is 1 for first leg, 2 for second leg and 3 for whole"""
+        dc = wx.BufferedDC(wx.ClientDC(self.canvas), self.canvas.buffer, wx.BUFFER_CLIENT_AREA)
+        dc.BeginDrawing()
+        dc.SetPen(self.hittable_pen)
+        
+        x1 = self.canvas.WorldToPixels(self.x1, "xaxis")
+        x2 = self.canvas.WorldToPixels(self.x2, "xaxis")
+        y1 = self.canvas.WorldToPixels(self.y1, "yaxis")
+        y2 = self.canvas.WorldToPixels(self.y2, "yaxis")
+        y3 = self.canvas.WorldToPixels(self.y3, "yaxis")
+        
+        if type == 1:
+            dc.DrawLine(x1, y1, x1, y3) # left vertical
+        elif type == 2:
+            dc.DrawLine(x2, y1, x2, y3) # right vertical
+        elif type == 3:
+            dc.DrawLine(x1, y1, x1, y3) # left vertical
+            dc.DrawLine(x2, y1, x2, y3) # right vertical
+            dc.DrawLine(x1, y2, x2, y2) # horiz
+        
+        dc.EndDrawing()
+        self.was_hittable = True
+        
+    def OnCompletion(self):
+        """Things to do on completion of one caliper.
+        Only a placeholder here for now"""
+        pass
+    
+#------------------------------------------------------------------------------
+class CalibrateCaliper(Caliper):
+    """A special caliper used for calibration"""
+    def __init__(self, parent):
+        Caliper.__init__(self, parent)
+        self.canvas = parent
+        
+        # default coordinates
+        self.x1, self.x2 = 0, 0
+        self.y1, self.y2 = 0, 0
+        self.y3 = self.canvas.maxheight
+        
+        self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
+        self.state = 1
+        self.measurement = 0
+        
+    def OnCompletion(self):
+        # get calibration entry
+        calibration = self.GetUserEntry("Enter distance in ms:")
+        
+        # handle cancel
+        if calibration == None:
+            self.canvas.caliperlist.pop(-1)
+            self.canvas._FGchanged = True
+            return
+        
+        # handle invalid entry
+        while not calibration.isdigit():
+            calibration = (self.GetUserEntry
+                          ("Please enter a positive number"))
+            
+        # set canvas calibration
+        self.canvas.calibration = int(calibration) / self.measurement
+        
+        # remove calibrate_caliper
+        self.canvas.caliperlist.pop(-1)
+        self.canvas._FGchanged = True
+    
+    def MeasureAndDisplay(self, dc):
+        # for calibration, measurement is always raw measurement
+        # and is not displayed
+        if self.state > 1:
+            self.measurement = abs(self.x2 - self.x1) #world coords
+            
+    def GetUserEntry(self,message):
+        """Get entry from user for calibration.
+        Entry must be a positive integer"""
+        calib = 0
+        dialog = wx.TextEntryDialog(None,\
+                                   message,"Calibrate")
+        if dialog.ShowModal() == wx.ID_OK:
+            calibration = dialog.GetValue()
+            dialog.Destroy()
+            return calibration
+        else: # On cancel
+            return None
+        
+#-------------------------------------------------------------------------
+class Doodle():
+    """Doodle on the image canvas"""
+    def __init__(self, parent):
+        self.lines = [] #list of doodle coords
+        self.pen =wx.Pen(wx.Colour(255, 0, 0), 2, wx.SOLID)
+        self.canvas = parent
+        
+    def Draw(self, dc):
+        """Draw the lines for the doodle"""
+        dc.SetPen(self.pen)
+        for line in self.lines: # line is a list of tuples
+            for coords in line:
+                x1 = self.canvas.WorldToPixels(coords[0], 'xaxis')
+                y1 = self.canvas.WorldToPixels(coords[1], 'yaxis')
+                x2 = self.canvas.WorldToPixels(coords[2], 'xaxis')
+                y2 = self.canvas.WorldToPixels(coords[3], 'yaxis')
+                dc.DrawLine(*(x1, y1, x2, y2))
+                
+    def DrawLine(self, coords):
+        """Draw the last bit of line"""
+        dc = wx.BufferedDC(wx.ClientDC(self.canvas), self.canvas.buffer,
+                               wx.BUFFER_CLIENT_AREA)
+        dc.SetPen(self.pen)
+        dc.DrawLine(*coords)
+        
+                
+    def handleMouseEvents(self, event):
+        """Handle all mouse events when active"""
+        pos = event.GetPosition()
+        mousex, mousey = (self.canvas.PixelsToWorld(pos.x, 'xaxis'),
+                          self.canvas.PixelsToWorld(pos.y, 'yaxis'))
+        if event.LeftDown():
+            """Start a new line on left click"""
+            self.current_line = []
+            self.oldx = mousex
+            self.oldy = mousey
+        
+        elif event.Dragging() and event.LeftIsDown():
+            """Draw the line"""
+            coords = (mousex, mousey, self.oldx, self.oldy)
+            
+            x1 = self.canvas.WorldToPixels(coords[0], 'xaxis')
+            y1 = self.canvas.WorldToPixels(coords[1], 'yaxis')
+            x2 = self.canvas.WorldToPixels(coords[2], 'xaxis')
+            y2 = self.canvas.WorldToPixels(coords[3], 'yaxis')
+            
+            # stored lines will have world coords - draw as pixels
+            self.current_line.append(coords)
+            self.DrawLine((x1, y1, x2, y2))
+            #self.pos = pos
+            #dc.EndDrawing()
+            self.oldx = mousex
+            self.oldy = mousey
+            
+            #self.canvas._doodlechanged = True
+    
+        elif event.LeftUp():
+            """End current line"""
+            self.lines.append(self.current_line)    
+    
+    def Clear(self, event):
+        self.lines = []
+        self.window.Refresh()
+        
+
+#--------------------------------------------------------------------------
+class PlayList():
+    """The list of image files to show"""
+    def __init__(self,filename):
+        """Initialize when a file is opened"""
+        self.playlist = []
+        self.nowshowing = 0   #current position in list
+        
+        # Open playlist file
+        if filename.endswith('.plst'):
+            self.playlistfile = filename
+            self.OpenPlaylist()
+        
+        # Or an image file (already filtered at selection)
+        else:
+            self.CreatePlayList(filename)
+    
+    def CreatePlayList(self, filename):
+        """
+        Make a playlist by listing all image files in the directory beginning
+        from the selected file
+        """
+        dirname,currentimage = os.path.split(filename)
+        allfiles = os.listdir(dirname)
+                
+        for eachfile in allfiles:
+            if os.path.splitext(eachfile)[1].lower() in ['.bmp','.png',
+                                        '.jpg','.jpeg','.tif','.tiff']:
+                self.playlist.append(os.path.join(dirname,eachfile))
+        self.playlist.sort()
+        self.nowshowing = self.playlist.index(filename)
+                        
+    def OpenPlayList(self,event,filename):
+        """open an existing playlist"""
+        self.playlist = filename.read().split(os.linesep).strip()
+
+#------------------------------------------------------------------------------        
 class MyApp(wx.App):
     def OnInit(self):
-        frame = MyFrame(None, -1, "EP Viewer")
-        frame.Show(True)
+        frame = MyFrame(None, "Test")
+        frame.Show(1)
         self.SetTopWindow(frame)
-        return True
-    
-if __name__ == "__main__":
+        return 1
+#------------------------------------------------------------------------
+
+def main():
     app = MyApp(0)
     app.MainLoop()
+
+
+if __name__ == "__main__":
+    main()
