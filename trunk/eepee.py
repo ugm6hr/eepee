@@ -136,15 +136,19 @@ class MyFrame(wx.Frame):
         tools = [
             (False, ID_OPEN, "Open", "Open file", "open"),
             (False, ID_SAVE, "Save", "Save file", "save"),
-            (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
-            (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
-            (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
-            (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+            (True, "SEP", '', '', ''),
             (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
             (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
             (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
+            (True, "SEP", '', '', ''),
+            (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
+            (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+            (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+            (True, "SEP", '', '', ''),
             (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
             (False, ID_NEXT, "Next", "Next image", "next"),
+            (True, "SEP", '', '', ''),
+            (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
             (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
@@ -154,9 +158,14 @@ class MyFrame(wx.Frame):
 
         for tool in tools:
             checktool, id, shelp, lhelp, bmp = tool
-            if checktool:
+            # separator
+            if id == "SEP":
+                self.toolbar.AddSeparator()
+            # checktool
+            elif checktool:
                 self.toolbar.AddCheckLabelTool(id, shelp, getBitmap(bmp),
                                                longHelp=lhelp)
+            # labeltool
             else:
                 self.toolbar.AddLabelTool(id, shelp, getBitmap(bmp),
                                           longHelp=lhelp)
@@ -241,7 +250,8 @@ class MyFrame(wx.Frame):
     
     def CleanUp(self):
         """Clean up on closing an image"""
-        self.displayimage.CloseImage()
+        if self.displayimage.image:
+            self.displayimage.CloseImage()
     
     def OnQuit(self, event):
         """On quitting the application"""
@@ -415,8 +425,6 @@ class Canvas(wx.Window):
                                           self.resized_height)
                                              , Image.ANTIALIAS)
         
-        
-        
         # factor chosen so that image ht = 1000 U
         self.factor = self.maxheight / self.resized_height
         
@@ -547,15 +555,13 @@ class DisplayImage():
         """Load a new image and display"""
         # TODO: handle opening .plst files
         self.filepath = filepath
-        
-        
+
         # TODO: handle .plst files
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
             pass # TODO: catch errors and display error message
-        
-        print "original size = ", self.uncropped_image.size
+
         # load saved information
         self.LoadImageData()
         
@@ -592,13 +598,18 @@ class DisplayImage():
             
         if self.cropframe != (0,0,0,0):
             self.iscropped = True
+        else:
+            self.iscropped = False
+            
             
         self.loaded_data = copy.deepcopy(self.data) #copy of the data that is loaded
             
-        print self.loaded_data
-        
     def SaveImageData(self):
         """Save the image data - but only if data has changed"""
+        # if data is None, initialise as empty dict
+        if not self.data:
+            self.data = {}
+        
         # collect all data
         self.data["note"] = self.frame.notepad.GetValue() 
         self.data["calibration"] = self.canvas.calibration
@@ -622,8 +633,6 @@ class DisplayImage():
                 if status != 0:
                     pass
                     #TODO: raise error
-        
-        print "saved data = ", self.data
         
     def SaveImage(self, event):
         """
