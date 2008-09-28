@@ -261,7 +261,7 @@ class MyFrame(wx.Frame):
 #------------------------------------------------------------------------------    
 class Canvas(wx.Window):
     def __init__(self, parent):
-        wx.Window.__init__(self, parent, -1)
+        wx.Window.__init__(self, parent, -1, style=wx.NO_FULL_REPAINT_ON_RESIZE)
         self.SetBackgroundColour('white')
         self.frame = wx.GetTopLevelParent(self)
                 
@@ -291,6 +291,7 @@ class Canvas(wx.Window):
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
+        self.Bind(wx.EVT_PAINT, self.OnPaint) 
 
     def handleMouseEvents(self, event):
         """handle mouse events when no tool is active"""
@@ -356,7 +357,11 @@ class Canvas(wx.Window):
         elif self._FGchanged:
             #dc.Clear()
             self.Draw(dc)
-            
+
+    def OnPaint(self, event):
+        dc = wx.BufferedPaintDC(self, self.buffer)
+            #self.Draw(dc)
+    
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
         # ----- Rubberband -------------------------------
