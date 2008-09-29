@@ -80,7 +80,7 @@ class MyFrame(wx.Frame):
         #------------------------------
         self._buildMenuBar()
         self._buildToolBar()
-        self.CreateStatusBar()
+        self.CreateStatusBar(3)
         
         #-------------------------------------
         self.Bind(wx.EVT_MENU, self.SelectFile, id=ID_OPEN)
@@ -291,7 +291,7 @@ class Canvas(wx.Window):
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
-        self.Bind(wx.EVT_PAINT, self.OnPaint) 
+        #self.Bind(wx.EVT_PAINT, self.OnPaint)  # TODO: Need this in windows
 
     def handleMouseEvents(self, event):
         """handle mouse events when no tool is active"""
@@ -573,14 +573,23 @@ class DisplayImage():
         # crop image as per saved frame
         if self.iscropped:
             self.image = self.uncropped_image.crop(self.cropframe)
+            self.frame.toolbar.ToggleTool(ID_CROP, 1)
             #self.image = self.CropImage(self.cropframe, "image")
         else:
             self.image = self.uncropped_image
+            self.frame.toolbar.ToggleTool(ID_CROP, 0)
         
         # rotate image to match saved rotation
         self.image = self.Rotate(self.image, self.rotation)
             
         self.canvas._BGchanged = True
+        
+        # update statusbar messages
+        self.frame.SetStatusText(os.path.split(filepath)[1], 1)
+        if self.canvas.calibration != 0:
+            self.frame.SetStatusText("Calibrated", 2)
+        else:
+            self.frame.SetStatusText("Not Calibrated", 2)
     
     def LoadImageData(self):
         """Load the stored data for the image at filepath"""
@@ -590,16 +599,15 @@ class DisplayImage():
                   "."+os.path.splitext(os.path.basename(self.filepath))[0]+".pkl")
         if os.path.exists(self.datafile):
             self.data = pickle.load(open(self.datafile,'r'))
-        
-            # load the variables with default vals if key does not exist
-            self.note = self.data.get("note", '')
-            self.frame.notepad.SetValue(self.note)
-            self.canvas.calibration = self.data.get("calibration", 0)
-            self.rotation = self.data.get("rotation", 0)
-            self.cropframe = self.data.get("cropframe", (0,0,0,0)) # will be in image coords
-        
+       
         else:
-            self.data = self.defaultdata #TODO: Should not need it here
+            self.data = copy.deepcopy(self.defaultdata) #TODO: Should not need it here
+        # load the variables with default vals if key does not exist
+        self.note = self.data.get("note", '')
+        self.frame.notepad.SetValue(self.note)
+        self.canvas.calibration = self.data.get("calibration", 0)
+        self.rotation = self.data.get("rotation", 0)
+        self.cropframe = self.data.get("cropframe", (0,0,0,0)) # will be in image coords        
             
         if self.cropframe != (0,0,0,0):
             self.iscropped = True
