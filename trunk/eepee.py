@@ -81,7 +81,6 @@ class MyFrame(wx.Frame):
         self._buildMenuBar()
         self._buildToolBar()
         self.CreateStatusBar(3)
-        
         #-------------------------------------
         self.Bind(wx.EVT_MENU, self.SelectFile, id=ID_OPEN)
         self.Bind(wx.EVT_MENU, self.OnQuit, id=ID_QUIT)
@@ -291,6 +290,14 @@ class Canvas(wx.Window):
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
+
+        # On windows, the onpaint function is required to
+        # handle paint events properly. However, it produces some artifacts
+        # during canvas initiation in Linux - so compromising my delaying the
+        # binding by 1 second seems to work        
+        wx.FutureCall(1000, self.BindOnPaint)
+        
+    def BindOnPaint(self):
         self.Bind(wx.EVT_PAINT, self.OnPaint)  # TODO: Need this in windows
 
     def handleMouseEvents(self, event):
@@ -357,8 +364,7 @@ class Canvas(wx.Window):
             self.Draw(dc)
 
     def OnPaint(self, event):
-        if self.resizedimage:
-            dc = wx.BufferedPaintDC(self, self.buffer)
+        dc = wx.BufferedPaintDC(self, self.buffer)
     
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
