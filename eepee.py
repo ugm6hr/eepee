@@ -291,7 +291,7 @@ class Canvas(wx.Window):
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouseEvents)
-        #self.Bind(wx.EVT_PAINT, self.OnPaint)  # TODO: Need this in windows
+        self.Bind(wx.EVT_PAINT, self.OnPaint)  # TODO: Need this in windows
 
     def handleMouseEvents(self, event):
         """handle mouse events when no tool is active"""
@@ -351,16 +351,14 @@ class Canvas(wx.Window):
         
         if self._BGchanged:
             self.ProcessBG()
-            #dc.Clear()
             self.Draw(dc)
            
         elif self._FGchanged:
-            #dc.Clear()
             self.Draw(dc)
 
     def OnPaint(self, event):
-        dc = wx.BufferedPaintDC(self, self.buffer)
-            #self.Draw(dc)
+        if self.resizedimage:
+            dc = wx.BufferedPaintDC(self, self.buffer)
     
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
@@ -568,6 +566,7 @@ class DisplayImage():
             pass # TODO: catch errors and display error message
 
         # load saved information
+        self.ResetData()
         self.LoadImageData()
         
         # crop image as per saved frame
@@ -577,7 +576,6 @@ class DisplayImage():
             #self.image = self.CropImage(self.cropframe, "image")
         else:
             self.image = self.uncropped_image
-            self.frame.toolbar.ToggleTool(ID_CROP, 0)
         
         # rotate image to match saved rotation
         self.image = self.Rotate(self.image, self.rotation)
@@ -600,22 +598,23 @@ class DisplayImage():
         if os.path.exists(self.datafile):
             self.data = pickle.load(open(self.datafile,'r'))
        
-        else:
-            self.data = copy.deepcopy(self.defaultdata) #TODO: Should not need it here
         # load the variables with default vals if key does not exist
         self.note = self.data.get("note", '')
         self.frame.notepad.SetValue(self.note)
         self.canvas.calibration = self.data.get("calibration", 0)
         self.rotation = self.data.get("rotation", 0)
-        self.cropframe = self.data.get("cropframe", (0,0,0,0)) # will be in image coords        
+        self.cropframe = self.data.get("cropframe", (0,0,0,0))         
             
         if self.cropframe != (0,0,0,0):
             self.iscropped = True
-        else:
-            self.iscropped = False
             
-            
-        self.loaded_data = copy.deepcopy(self.data) #copy of the data that is loaded
+        self.loaded_data = copy.deepcopy(self.data)
+        
+    def ResetData(self):
+        """Reset image data when new image is loaded"""
+        self.data = copy.deepcopy(self.defaultdata)
+        self.iscropped = False
+        self.frame.toolbar.ToggleTool(ID_CROP, 0)
             
     def SaveImageData(self):
         """Save the image data - but only if data has changed"""
