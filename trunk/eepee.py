@@ -20,6 +20,7 @@ ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()
 ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
 ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
+ID_CLEAR = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -94,6 +95,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.canvas.ToggleDoodle, id = ID_DOODLE)
         self.Bind(wx.EVT_MENU, self.SelectPrevImage, id = ID_PREVIOUS)
         self.Bind(wx.EVT_MENU, self.SelectNextImage, id = ID_NEXT)
+        self.Bind(wx.EVT_MENU, self.canvas.ClearDoodle, id = ID_CLEAR)
         
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -111,6 +113,7 @@ class MyFrame(wx.Frame):
         edit_menu.Append(ID_CALIBRATE, "Cali&brate", "Calibrate image")
         edit_menu.Append(ID_CALIPER, "New &Caliper", "Start new caliper")
         edit_menu.Append(ID_DOODLE, "Doodle", "Doodle on the canvas")
+        edit_menu.Append(ID_CLEAR, "Clear", "Clear the doodle")
         
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
@@ -143,6 +146,7 @@ class MyFrame(wx.Frame):
             (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
             (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
             (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+            (False, ID_CLEAR, "Clear", "Clear the doodle", "clear"),
             (True, "SEP", '', '', ''),
             (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
             (False, ID_NEXT, "Next", "Next image", "next"),
@@ -285,7 +289,6 @@ class Canvas(wx.Window):
         
         self._BGchanged = False
         self._FGchanged = False
-        self._doodlechanged = False
         
         self.Bind(wx.EVT_SIZE, self.OnResize)
         self.Bind(wx.EVT_IDLE, self.OnIdle)
@@ -298,7 +301,7 @@ class Canvas(wx.Window):
         wx.FutureCall(1000, self.BindOnPaint)
         
     def BindOnPaint(self):
-        self.Bind(wx.EVT_PAINT, self.OnPaint)  # TODO: Need this in windows
+        self.Bind(wx.EVT_PAINT, self.OnPaint) 
 
     def handleMouseEvents(self, event):
         """handle mouse events when no tool is active"""
@@ -368,8 +371,12 @@ class Canvas(wx.Window):
     
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
+        
+        if self.activetool == None: 
+            self.handleMouseEvents(event)
+        
         # ----- Rubberband -------------------------------
-        if self.activetool == "rubberband":
+        elif self.activetool == "rubberband":
             if event.LeftUp(): # finished selecting crop extent
                 cropframe = self.rubberband.getCurrentExtent()
 
@@ -383,19 +390,21 @@ class Canvas(wx.Window):
                 
             else:
                 self.rubberband.handleMouseEvents(event)
-                
+          
+        #------- Caliper ----------------------------------      
         elif self.activetool == "caliper":
             # hand the event to the active caliper
             self.caliperlist[self.activecaliperindex].handleMouseEvents(event)
             
+        # --------- Calibrate ----------------------------
         elif self.activetool == "calibrate":
             self.calibrate_caliper.handleMouseEvents(event)
             
+        # ----------- Doodle------------------
         elif self.activetool == "doodle":
             self.doodle.handleMouseEvents(event)
         
-        elif self.activetool == None: #TODO: Move to top
-            self.handleMouseEvents(event)
+        
 
     def PixelsToWorld(self, coord, axis):
         """convert from pixels to world units.
@@ -465,7 +474,13 @@ class Canvas(wx.Window):
     def DrawDoodle(self, dc):
         """Draw the doodle lines without redrawing everything else"""
         self.doodle.Draw(dc)
-        self._doodlechanged = False
+        #self._doodlechanged = False
+    
+    def ClearDoodle(self, event):
+        self.doodle.lines = []
+        self._FGchanged = True
+        #self._doodlechanged = True
+    
     
     def resetFG(self):
         """When the coords are not preserved, reset all
@@ -618,10 +633,18 @@ class DisplayImage():
         
     def ResetData(self):
         """Reset image data when new image is loaded"""
+        # reset data to default
         self.data = copy.deepcopy(self.defaultdata)
+        
+        # clear the doodle
+        self.canvas.ClearDoodle(None)
+        
         self.iscropped = False
         self.frame.toolbar.ToggleTool(ID_CROP, 0)
             
+        self.canvas.activetool = None
+        self.frame.toolbar.ToggleTool(ID_DOODLE, 0)
+        
     def SaveImageData(self):
         """Save the image data - but only if data has changed"""
         # if data is None, initialise as empty dict
@@ -662,7 +685,6 @@ class DisplayImage():
         # copy the clientDC out before getting the savefilename because
         # the 'shadow' of the save dialog results in a white area on the
         # saved image.
-        # TODO: save only the image part of the screen
         context = wx.ClientDC(self.canvas)
         savebmp = wx.EmptyBitmap(self.canvas.width,self.canvas.height)
         #convert dc to bitmap
@@ -771,6 +793,7 @@ class DisplayImage():
     def CloseImage(self):
         """Things to do before closing image"""
         self.SaveImageData()
+        # TODO: based in user preference may clear calipers
 
 #------------------------------------------------------------------------------
 class Caliper():
