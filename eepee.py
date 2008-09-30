@@ -136,23 +136,23 @@ class MyFrame(wx.Frame):
         ## list of tools - can be made editable in preferences
         # (checktool?, id, "short help", "long help", "getimage name")
         tools = [
-            (False, ID_OPEN, "Open", "Open file", "open"),
-            (False, ID_SAVE, "Save", "Save file", "save"),
-            (True, "SEP", '', '', ''),
-            (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
-            (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
-            (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
-            (True, "SEP", '', '', ''),
-            (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
-            (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
-            (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
-            (False, ID_CLEAR, "Clear", "Clear the doodle", "clear"),
-            (True, "SEP", '', '', ''),
-            (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
-            (False, ID_NEXT, "Next", "Next image", "next"),
-            (True, "SEP", '', '', ''),
-            (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
-            (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
+        (False, ID_OPEN, "Open", "Open file", "open"),
+        (False, ID_SAVE, "Save", "Save file", "save"),
+        (True, "SEP", '', '', ''),
+        (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
+        (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
+        (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
+        (True, "SEP", '', '', ''),
+        (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
+        (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+        (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
+        (False, ID_CLEAR, "Clear", "Clear the doodle", "clear"),
+        (True, "SEP", '', '', ''),
+        (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
+        (False, ID_NEXT, "Next", "Next image", "next"),
+        (True, "SEP", '', '', ''),
+        (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
+        (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL|wx.NO_BORDER|
@@ -378,7 +378,8 @@ class Canvas(wx.Window):
         # ----- Rubberband -------------------------------
         elif self.activetool == "rubberband":
             if event.LeftUp(): # finished selecting crop extent
-                cropframe = self.rubberband.getCurrentExtent()
+                # convert cropframe to list to make it easier to manipulate
+                cropframe = list(self.rubberband.getCurrentExtent())
 
                 self.rubberband.reset()
                 self.SetCursor(wx.NullCursor)
@@ -540,7 +541,8 @@ class Canvas(wx.Window):
             return (y1, imagewidth-x2, y2, imagewidth-x1)
         
         elif rotation == 2:
-            return (imagewidth-x2, imageheight-y2, imagewidth-x1, imageheight-y1)
+            return (imagewidth-x2, imageheight-y2,
+                    imagewidth-x1, imageheight-y1)
         
         elif rotation == 3:
             return (imageheight-y2, x1, imageheight-y1, x2)
@@ -559,7 +561,7 @@ class DisplayImage():
         # image cropping can be toggled
         # if prev crop info is stored, this will be true
         self.iscropped = False
-        self.cropframe = (0,0,0,0) # x1, y1, x2, y2
+        self.cropframe = [0,0,0,0] # x1, y1, x2, y2
         
         # conversion factor to convert from px to world coords
         # = 1000 / image height in px
@@ -570,7 +572,7 @@ class DisplayImage():
         
         # default data
         self.defaultdata = {"note" : '', "calibration" : 0,
-                            "rotation" : 0, "cropframe" : (0,0,0,0)}
+                            "rotation" : 0, "cropframe" : [0,0,0,0]}
         
         # data saved with image
         self.data = None #ToDO : may not require
@@ -624,9 +626,12 @@ class DisplayImage():
         self.frame.notepad.SetValue(self.note)
         self.canvas.calibration = self.data.get("calibration", 0)
         self.rotation = self.data.get("rotation", 0)
-        self.cropframe = self.data.get("cropframe", (0,0,0,0))         
+        self.cropframe = self.data.get("cropframe", [0,0,0,0])       
             
-        if self.cropframe != (0,0,0,0):
+        # for compatibility with older versions where cropframe was tuple
+        self.cropframe = list(self.cropframe)
+        
+        if self.cropframe != [0,0,0,0]:
             self.iscropped = True
             
         self.loaded_data = copy.deepcopy(self.data)
@@ -751,7 +756,7 @@ class DisplayImage():
             # uncrop - reset crop frame, but rotate to current state
             self.image = self.uncropped_image
             self.image = self.Rotate(self.image, self.rotation)
-            self.cropframe = (0,0,0,0)
+            self.cropframe = [0,0,0,0]
             self.iscropped = False
             self.canvas._BGchanged = True
         
@@ -762,12 +767,12 @@ class DisplayImage():
         # They are in reference to canvas.
         # remove offsets so that they refer to image, then
         # scale so that they reflect pixels
-        cropframe = (cropframe[0] - self.canvas.xoffset,
+        cropframe = [cropframe[0] - self.canvas.xoffset,
                      cropframe[1] - self.canvas.yoffset,
                      cropframe[2] - self.canvas.xoffset,
-                     cropframe[3] - self.canvas.yoffset)
-        self.cropframe = tuple(int(coord/self.canvas.scalingvalue)
-                                      for coord in cropframe)
+                     cropframe[3] - self.canvas.yoffset]
+        self.cropframe = [int(coord/self.canvas.scalingvalue)
+                                      for coord in cropframe]
 
         # correct cropframe for current rotation of canvas so that cropframe
         # applies to unrotated image
@@ -780,6 +785,11 @@ class DisplayImage():
         # translate cropframe to unrotated image
         self.cropframe = self.canvas.TranslateFrame(self.cropframe,
                                         self.rotation, width, height)
+        
+        # convert any negative value to 0
+        for ind, val in enumerate(self.cropframe):
+            if val < 0:
+                self.cropframe[ind] = 0
         
         # now crop and rotate
         cropped_image = self.uncropped_image.crop(self.cropframe)
@@ -933,7 +943,8 @@ class Caliper():
     def MarkAsHittable(self, type):
         """Mark caliper as hittable.
         type is 1 for first leg, 2 for second leg and 3 for whole"""
-        dc = wx.BufferedDC(wx.ClientDC(self.canvas), self.canvas.buffer, wx.BUFFER_CLIENT_AREA)
+        dc = wx.BufferedDC(wx.ClientDC(self.canvas),
+                           self.canvas.buffer, wx.BUFFER_CLIENT_AREA)
         dc.BeginDrawing()
         dc.SetPen(self.hittable_pen)
         
