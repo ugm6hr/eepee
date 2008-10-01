@@ -12,6 +12,20 @@ import wx
 
 from customrubberband import RubberBand
 from geticons import getBitmap
+
+## ------------------------------------------
+_title          = "EP viewer"
+_about          = """
+Eepee v 0.9
+An application to view, analyze and present EP tracings\n
+Author: Raja S. 
+rajajs@gmail.com
+License: GPL\n
+For more information and for updates visit
+http:\\code.google.com\p\eepee\n"""
+_version = "0.9.0"
+_author = "Raja Selvaraj"
+
 #------------------------------------------------------------------------------
 # Global variables
 ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
@@ -20,7 +34,7 @@ ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()
 ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
 ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
-ID_CLEAR = wx.NewId()
+ID_CLEAR = wx.NewId()   ; ID_ABOUT = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -124,6 +138,9 @@ class MyFrame(wx.Frame):
         playlist_menu.Append(ID_PREVIOUS, "Previous", "Previous image")
         playlist_menu.Append(ID_NEXT, "Next", "Next image")
         
+        help_menu = wx.Menu()
+        help_menu.Append(ID_ABOUT, "About", "About this application")
+        
         MenuBar.Append(file_menu, "&File")
         MenuBar.Append(edit_menu, "&Edit")
         MenuBar.Append(image_menu, "&Image")
@@ -151,7 +168,9 @@ class MyFrame(wx.Frame):
         (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
         (False, ID_NEXT, "Next", "Next image", "next"),
         (True, "SEP", '', '', ''),
+        (True, ID_ABOUT, "About", "About this application", "about"),
         (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
+        (True, "SEP", '', '', ''),
         (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
             ]
         
@@ -255,6 +274,12 @@ class MyFrame(wx.Frame):
         """Clean up on closing an image"""
         if self.displayimage.image:
             self.displayimage.CloseImage()
+            
+    def DisplayMessage(self, message):
+        """Display the message in the status bar.
+        Can be used to alert user about error messages"""
+        self.SetStatusText(message, 0) #TODO: mechanism for alerting user
+        
     
     def OnQuit(self, event):
         """On quitting the application"""
@@ -586,7 +611,8 @@ class DisplayImage():
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
-            pass # TODO: catch errors and display error message
+            # TODO: catch specific errors and display error message
+            self.frame.DisplayMessage("Could not load image")
 
         # load saved information
         self.ResetData()
