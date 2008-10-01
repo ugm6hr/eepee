@@ -2,11 +2,14 @@ EPviewer
 (c)Raja S
 rajajs {at} gmail {dot} com
 
-version 0.8.1
+version 0.9
 -------------
-
- * Corrected error in measurement display of uncalibrated images
- * Can save image in various formats now
+ October 01, 2008
+ * Notes and playlist reside in tabs in a split window
+ * Image can be resized without losing caliper and calib coordinates
+ * Multiple active calipers at any time
+ * Loaded images can be cropped and rotated with transformation saved
+ * Can save image in multiple  formats now
 
 
 version 0.8.0
