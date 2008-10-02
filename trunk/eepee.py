@@ -21,7 +21,7 @@ An application to view, analyze and present EP tracings\n
 Author: Raja S. 
 rajajs@gmail.com
 License: GPL\n
-For more information and for updates visit
+For more information, help and for updates visit
 http:\\code.google.com\p\eepee\n"""
 _version = "0.9.0"
 _author = "Raja Selvaraj"
@@ -110,6 +110,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.SelectPrevImage, id = ID_PREVIOUS)
         self.Bind(wx.EVT_MENU, self.SelectNextImage, id = ID_NEXT)
         self.Bind(wx.EVT_MENU, self.canvas.ClearDoodle, id = ID_CLEAR)
+        self.Bind(wx.EVT_MENU, self.About, id=ID_ABOUT)
         
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -145,6 +146,7 @@ class MyFrame(wx.Frame):
         MenuBar.Append(edit_menu, "&Edit")
         MenuBar.Append(image_menu, "&Image")
         MenuBar.Append(playlist_menu, "&Playlist")
+        MenuBar.Append(help_menu, "&Help")
         
         self.SetMenuBar(MenuBar)
 
@@ -168,7 +170,7 @@ class MyFrame(wx.Frame):
         (False, ID_PREVIOUS, "Previous", "Previous image", "previous"),
         (False, ID_NEXT, "Next", "Next image", "next"),
         (True, "SEP", '', '', ''),
-        (True, ID_ABOUT, "About", "About this application", "about"),
+        (False, ID_ABOUT, "About", "About this application", "about"),
         (False, ID_QUIT, "Quit", "Quit eepee", "quit"),
         (True, "SEP", '', '', ''),
         (True,  ID_UNSPLIT, "Close sidepanel", "Toggle sidepanel", "split")
@@ -193,6 +195,12 @@ class MyFrame(wx.Frame):
                                           longHelp=lhelp)
                 
         self.toolbar.Realize()
+
+    def About(self, event):
+        """Display about message"""
+        dlg = wx.MessageDialog(self, _about, "About Eepee", wx.OK)
+        dlg.ShowModal()
+        dlg.Destroy()
 
     def InitializeSplitter(self):
         """Initialize sash position"""
@@ -412,6 +420,7 @@ class Canvas(wx.Window):
                 
                 self.frame.displayimage.image = \
                     self.frame.displayimage.CropImage(cropframe)
+                self.resetFG()
                 self._BGchanged = True
                 
             else:
@@ -429,7 +438,6 @@ class Canvas(wx.Window):
         # ----------- Doodle------------------
         elif self.activetool == "doodle":
             self.doodle.handleMouseEvents(event)
-        
         
 
     def PixelsToWorld(self, coord, axis):
@@ -507,11 +515,13 @@ class Canvas(wx.Window):
         self._FGchanged = True
         #self._doodlechanged = True
     
-    
     def resetFG(self):
         """When the coords are not preserved, reset all
         foreground elements to default"""
-        pass
+        self.doodle.lines = []
+        self.caliperlist = []
+        self.calibration = 0
+        self.frame.SetStatusText("Not calibrated", 2)
         
     def ImageToBitmap(self, img):
         newimage = apply(wx.EmptyImage, img.size)
@@ -736,11 +746,15 @@ class DisplayImage():
             return
         
         # format to save is dependent on selected wildcard, default to png
-        savefilename += accepted_formats[filter_index]
+        
+        # Looks like the extension is added automatically on windows
+        if os.name == 'posix':
+            savefilename += accepted_formats[filter_index]
+        
         try:
             savebmp.SaveFile(savefilename, image_handlers[filter_index])
         except:
-            pass # TODO:
+            self.frame.DisplayMessage("Could not save image")
     
     def RotateLeft(self, event):
         """Rotate the image 90 deg counterclockwise.
@@ -783,6 +797,7 @@ class DisplayImage():
             self.image = self.uncropped_image
             self.image = self.Rotate(self.image, self.rotation)
             self.cropframe = [0,0,0,0]
+            self.canvas.resetFG()
             self.iscropped = False
             self.canvas._BGchanged = True
         
@@ -1031,6 +1046,9 @@ class CalibrateCaliper(Caliper):
         # set canvas calibration
         self.canvas.calibration = int(calibration) / self.measurement
         
+        # set status text in frame
+        self.canvas.frame.SetStatusText("Calibrated", 2)
+        
         # remove calibrate_caliper
         self.canvas.caliperlist.pop(-1)
         self.canvas._FGchanged = True
@@ -1079,7 +1097,6 @@ class Doodle():
                                wx.BUFFER_CLIENT_AREA)
         dc.SetPen(self.pen)
         dc.DrawLine(*coords)
-        
                 
     def handleMouseEvents(self, event):
         """Handle all mouse events when active"""
@@ -1159,7 +1176,7 @@ class PlayList():
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
     def OnInit(self):
-        frame = MyFrame(None, "Test")
+        frame = MyFrame(None, _title)
         frame.Show(1)
         self.SetTopWindow(frame)
         return 1
