@@ -567,20 +567,20 @@ class Canvas(wx.Window):
         to rotation in multiples of 90 degrees. Frame is tuple (x1, y1, x2, y2).
         """
         rotation = rotation % 4 # make it modulo 4
-        (x1, y1, x2, y2) = frame
+        [x1, y1, x2, y2] = frame
         
         if rotation == 0:
             return frame
         
         elif rotation  == 1:
-            return (y1, imagewidth-x2, y2, imagewidth-x1)
+            return [y1, imagewidth-x2, y2, imagewidth-x1]
         
         elif rotation == 2:
-            return (imagewidth-x2, imageheight-y2,
-                    imagewidth-x1, imageheight-y1)
+            return [imagewidth-x2, imageheight-y2,
+                    imagewidth-x1, imageheight-y1]
         
         elif rotation == 3:
-            return (imageheight-y2, x1, imageheight-y1, x2)
+            return [imageheight-y2, x1, imageheight-y1, x2]
             
        
 #------------------------------------------------------------------------------
