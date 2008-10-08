@@ -364,6 +364,10 @@ class Canvas(wx.Window):
                         caliper.x2offset = caliper.x2 - worldx
                         caliper.state = 4
                         
+                else: # if left click was not to select pre-existing
+                    # caliper, start a new one
+                    self.NewCaliper(event)
+                        
             elif event.RightDown():
                 # if caliper hittable - delete it
                 caliper, caliperindex, hit_type = self.HitObject(worldx, worldy)
@@ -1042,7 +1046,11 @@ class CalibrateCaliper(Caliper):
         while not calibration.isdigit():
             calibration = (self.GetUserEntry
                           ("Please enter a positive number"))
-            
+            if calibration == None: # if user cancels, remove caliper
+                self.canvas.caliperlist.pop(-1)
+                self.canvas._FGchanged = True
+                return
+                
         # set canvas calibration
         self.canvas.calibration = int(calibration) / self.measurement
         
