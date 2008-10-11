@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import wx, os, sys
-
+from geticons import getBitmap
 
 class PlayList(wx.Dialog):
     def __init__(self, parent):
@@ -16,18 +16,12 @@ class PlayList(wx.Dialog):
         self.playlistctrl.InsertColumn(0, "Path", width=280)
         self.playlistctrl.InsertColumn(1, "Name", width=100)
         
-        self.openbutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/document-open.png", wx.BITMAP_TYPE_ANY))
-        self.addbutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/list-add.png", wx.BITMAP_TYPE_ANY))
-        self.removebutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/list-remove.png", wx.BITMAP_TYPE_ANY))
-        self.upbutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/go-up.png", wx.BITMAP_TYPE_ANY))
-        self.downbutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/go-down.png", wx.BITMAP_TYPE_ANY))
-        self.savebutton = wx.BitmapButton(self.controlpanel, -1,
-                        wx.Bitmap("/data/docs/programming/tango_icons/tango-icon-theme-0.8.1/22x22/actions/document-save.png", wx.BITMAP_TYPE_ANY))
+        self.openbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("open"))
+        self.addbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("add"))
+        self.removebutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("remove"))
+        self.upbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("up"))
+        self.downbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("down"))
+        self.savebutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("save"))
 
         self.__set_properties()
         self.__do_layout()
