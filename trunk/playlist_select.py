@@ -1,12 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""PlayListSelector is a dialog for constructing a playlist.
+A playlist is simply a list of filepaths written as rows in
+a plain text file.
+The selector is called as a modal dialog and can be initiated with
+a base list or an empty list. """
+
 import wx, os, sys
 from geticons import getBitmap
 
-class PlayList(wx.Dialog):
-    def __init__(self, parent):
+class PlayListSelector(wx.Dialog):
+    def __init__(self, parent, playlist=[]):
+        """playlist_selector is a dialog for constructing the playlist.
+        Can start with a list of files as pre-existing list"""
         wx.Dialog.__init__(self, parent)
+        
         self.controlpanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER|
                                     wx.TAB_TRAVERSAL)
         self.listpanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)
@@ -16,34 +25,42 @@ class PlayList(wx.Dialog):
         self.playlistctrl.InsertColumn(0, "Path", width=280)
         self.playlistctrl.InsertColumn(1, "Name", width=100)
         
-        self.openbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("open"))
-        self.addbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("add"))
-        self.removebutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("remove"))
-        self.upbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("up"))
-        self.downbutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("down"))
-        self.savebutton = wx.BitmapButton(self.controlpanel, -1, getBitmap("save"))
+        self.addbutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("add"))
+        self.removebutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("remove"))
+        self.upbutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("up"))
+        self.downbutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("down"))
+        self.savebutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("save"))
+        self.donebutton = wx.BitmapButton(self.controlpanel, -1,
+                                getBitmap("quit"))
 
         self.__set_properties()
         self.__do_layout()
 
-        self.Bind(wx.EVT_BUTTON, self.openPlaylist, self.openbutton)
         self.Bind(wx.EVT_BUTTON, self.addItem, self.addbutton)
         self.Bind(wx.EVT_BUTTON, self.removeItem, self.removebutton)
         self.Bind(wx.EVT_BUTTON, self.moveUp, self.upbutton)
         self.Bind(wx.EVT_BUTTON, self.moveDown, self.downbutton)
         self.Bind(wx.EVT_BUTTON, self.savePlaylist, self.savebutton)
+        self.Bind(wx.EVT_BUTTON, self.onQuit, self.donebutton)
         
-        self.playlist = []
+        self.playlist = playlist
+        self.loadPlaylist(self.playlist)
         self.wildcard = "Playlist|*.plst"
 
     def __set_properties(self):
-        self.SetTitle("Playlist")
-        self.openbutton.SetSize(self.openbutton.GetBestSize())
+        self.SetTitle("Playlist_selector")
+
         self.addbutton.SetSize(self.addbutton.GetBestSize())
         self.removebutton.SetSize(self.removebutton.GetBestSize())
         self.upbutton.SetSize(self.upbutton.GetBestSize())
         self.downbutton.SetSize(self.downbutton.GetBestSize())
         self.savebutton.SetSize(self.savebutton.GetBestSize())
+        self.donebutton.SetSize(self.donebutton.GetBestSize())
 
     def __do_layout(self):
         mainsizer = wx.BoxSizer(wx.VERTICAL)
@@ -52,12 +69,14 @@ class PlayList(wx.Dialog):
         sizer_1.Add(self.playlistctrl, 1, wx.EXPAND, 0)
         self.listpanel.SetSizer(sizer_1)
         mainsizer.Add(self.listpanel, 5, wx.ALL|wx.EXPAND, 2)
-        controlsizer.Add(self.openbutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
+        
         controlsizer.Add(self.addbutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
         controlsizer.Add(self.removebutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
         controlsizer.Add(self.upbutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
         controlsizer.Add(self.downbutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
         controlsizer.Add(self.savebutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
+        controlsizer.Add(self.donebutton, 1, wx.ALIGN_CENTER_VERTICAL, 0)
+        
         self.controlpanel.SetSizer(controlsizer)
         mainsizer.Add(self.controlpanel, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|
                       wx.EXPAND, 2)
@@ -73,24 +92,15 @@ class PlayList(wx.Dialog):
         dlg = wx.FileDialog(self,style=wx.OPEN | wx.MULTIPLE,wildcard=filters)
         if dlg.ShowModal() == wx.ID_OK:
             selection = dlg.GetPaths()
-            for path in selection:
-                index = self.playlistctrl.InsertStringItem(sys.maxint,path)
-                self.playlistctrl.SetStringItem(index, 1, os.path.basename(path))
+            self.loadPlaylist(selection)
+            #for path in selection:
+            #    index = self.playlistctrl.InsertStringItem(sys.maxint,path)
+            #    self.playlistctrl.SetStringItem(index, 1, os.path.basename(path))
         else:
             return 
         
-    def openPlaylist(self, event):
-        """Open an existing playlist for editing"""
-        dlg = wx.FileDialog(self, "Select playlist to open...",
-                                    style=wx.OPEN,
-                                    wildcard=self.wildcard)
-        if dlg.ShowModal() == wx.ID_OK:
-            playlistfile = dlg.GetPath()
-        else:
-            return
-        
-        playlist = open(playlistfile, 'r').readlines()
-        
+    def loadPlaylist(self, playlist):
+        """Load an existing playlist for editing"""
         for path in playlist:
             index = self.playlistctrl.InsertStringItem(sys.maxint,path)
             self.playlistctrl.SetStringItem(index, 1, os.path.basename(path))
@@ -146,11 +156,5 @@ class PlayList(wx.Dialog):
             fi.write('%s\n' %(path))
         fi.close()          
             
-
-if __name__ == "__main__":
-    Playlist_select = wx.PySimpleApp(0)
-    wx.InitAllImageHandlers()
-    Playlist = PlayList(None)
-    Playlist_select.SetTopWindow(Playlist)
-    Playlist.Show()
-    Playlist_select.MainLoop()
+    def onQuit(self, event):
+        self.Destroy()

@@ -12,6 +12,7 @@ import wx
 
 from customrubberband import RubberBand
 from geticons import getBitmap
+from playlist_select import PlayListSelector
 
 ## ------------------------------------------
 _title          = "EP viewer"
@@ -35,6 +36,7 @@ ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
 ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
 ID_CLEAR = wx.NewId()   ; ID_ABOUT = wx.NewId()
+ID_NEWPL = wx.NewId() ; ID_EDITPL = wx.NewId()
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -111,6 +113,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.SelectNextImage, id = ID_NEXT)
         self.Bind(wx.EVT_MENU, self.canvas.ClearDoodle, id = ID_CLEAR)
         self.Bind(wx.EVT_MENU, self.About, id=ID_ABOUT)
+        self.Bind(wx.EVT_MENU, self.NewPlaylist, id=ID_NEWPL)
+        self.Bind(wx.EVT_MENU, self.EditPlaylist, id=ID_EDITPL)
         
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -138,6 +142,8 @@ class MyFrame(wx.Frame):
         playlist_menu = wx.Menu()
         playlist_menu.Append(ID_PREVIOUS, "Previous", "Previous image")
         playlist_menu.Append(ID_NEXT, "Next", "Next image")
+        playlist_menu.Append(ID_NEWPL, "New Playlist", 'Make New Playlist')
+        playlist_menu.Append(ID_EDITPL, "Edit Playlist", 'Edit Playlist')
         
         help_menu = wx.Menu()
         help_menu.Append(ID_ABOUT, "About", "About this application")
@@ -239,6 +245,16 @@ class MyFrame(wx.Frame):
         self.InitializeSplitter()
         self.playlist = PlayList(filepath)
         self.DisplayPlaylist()
+    
+    def NewPlaylist(self, event):
+        """Construct a new playlist"""
+        playlist_selector = PlayListSelector(self, [])
+        playlist_selector.ShowModal()
+        
+    def EditPlaylist(self, event):
+        """Edit the current playlist"""
+        playlist_selector = PlayListSelector(self, self.playlist.playlist)
+        playlist_selector.ShowModal()
     
     def DisplayPlaylist(self):
         """Display a new playlist in the listbox"""
