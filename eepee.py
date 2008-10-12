@@ -230,21 +230,28 @@ class MyFrame(wx.Frame):
     def SelectFile(self, event):
         """Triggered on opening file"""
         # selection dialog to select file
+        # add playlist files to filter
+        filter = 'Playlist|*.plst|' + accepted_wildcards 
         dlg = wx.FileDialog(self ,style=wx.OPEN,
-                            wildcard=accepted_wildcards)
-        dlg.SetFilterIndex(4) #set 'all files' as default
+                            wildcard=filter)
+        dlg.SetFilterIndex(5) #set 'all files' as default
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
         else:
             return
         
-        # load file
-        self.displayimage.LoadAndDisplayImage(filepath)
-        
         #create a new playlist and display
         self.InitializeSplitter()
         self.playlist = PlayList(filepath)
         self.DisplayPlaylist()
+        
+        # load file
+        self.displayimage.LoadAndDisplayImage(filepath)
+        
+        ##create a new playlist and display
+        #self.InitializeSplitter()
+        #self.playlist = PlayList(filepath)
+        #self.DisplayPlaylist()
     
     def NewPlaylist(self, event):
         """Construct a new playlist"""
@@ -407,6 +414,7 @@ class Canvas(wx.Window):
         
     def OnIdle(self, event):
         """Redraw if there is a change"""
+
         if self._BGchanged or self._FGchanged:
             dc = wx.BufferedDC(wx.ClientDC(self), self.buffer,
                                wx.BUFFER_CLIENT_AREA)
@@ -634,10 +642,12 @@ class DisplayImage():
         
     def LoadAndDisplayImage(self, filepath):
         """Load a new image and display"""
-        # TODO: handle opening .plst files
         self.filepath = filepath
 
-        # TODO: handle .plst files
+        # handle .plst files
+        if self.filepath.endswith('.plst'):
+            self.filepath = self.frame.playlist.playlist[0]
+        
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
@@ -1193,9 +1203,13 @@ class PlayList():
         self.playlist.sort()
         self.nowshowing = self.playlist.index(filename)
                         
-    def OpenPlayList(self,event,filename):
+    def OpenPlaylist(self):
         """open an existing playlist"""
-        self.playlist = filename.read().split(os.linesep).strip()
+        try:
+            self.playlist = [path.rstrip('\n') for path in
+                             open(self.playlistfile, 'r').readlines()]
+        except:
+            pass # TODO: display error in frame
 
 #------------------------------------------------------------------------------        
 class MyApp(wx.App):
