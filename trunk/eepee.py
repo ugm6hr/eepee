@@ -646,13 +646,18 @@ class DisplayImage():
 
         # handle .plst files
         if self.filepath.endswith('.plst'):
-            self.filepath = self.frame.playlist.playlist[0]
-        
+            try:
+                self.filepath = self.frame.playlist.playlist[0]
+            except IndexError:
+                self.frame.DisplayMessage("Empty playlist")
+                return
+            
         try:        
             self.uncropped_image = Image.open(self.filepath, 'r')
         except:
             # TODO: catch specific errors and display error message
             self.frame.DisplayMessage("Could not load image")
+            return
 
         # load saved information
         self.ResetData()
