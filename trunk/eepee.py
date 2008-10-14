@@ -953,8 +953,15 @@ class Caliper():
         pos = event.GetPosition()
         mousex, mousey = (self.canvas.PixelsToWorld(pos.x, 'xaxis'),
                           self.canvas.PixelsToWorld(pos.y, 'yaxis'))
+        
+        # cancel caliper anytime by right clicking
+        if event.RightDown():
+            self.canvas.caliperlist.pop(-1)
+            self.canvas._FGchanged = True
+            self.canvas.activetool = None
+        
         # beginning - this is first caliper being positioned
-        if event.Moving() and self.state == 1:
+        elif event.Moving() and self.state == 1:
             self.x1 = self.x2 = mousex
             self.canvas._FGchanged = True
         
