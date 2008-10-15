@@ -708,7 +708,7 @@ class DisplayImage():
         self.canvas._BGchanged = True
         
         # update statusbar messages
-        self.frame.SetStatusText(os.path.split(filepath)[1], 1)
+        self.frame.SetStatusText(os.path.split(self.filepath)[1], 1)
         if self.canvas.calibration != 0:
             self.frame.SetStatusText("Calibrated", 2)
         else:
