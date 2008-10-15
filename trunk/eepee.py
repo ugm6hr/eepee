@@ -37,6 +37,27 @@ ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
 ID_CLEAR = wx.NewId()   ; ID_ABOUT = wx.NewId()
 ID_NEWPL = wx.NewId() ; ID_EDITPL = wx.NewId()
+ID_KEYS = wx.NewId()
+
+
+shortcuts = """
+Keyboard and mouse shortcuts:
+=============================
+
+o - Open file\n
+s - Save file\n
+r - Rotate right\n
+l - Rotate left\n
+b - Calibrate\n
+c - Start caliper\n
+d - Start/stop doodle\n
+x - Clear doodle\n
+PgDn - Next image\n
+PgDn - Prev image\n
+q - Quit\n\n
+Left click - Start new caliper\n
+Right click - Removes caliper\n
+"""
 
 #last png is for default save ext
 accepted_formats = ['.png', '.tiff', '.jpg', '.bmp', '.png'] 
@@ -115,6 +136,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.About, id=ID_ABOUT)
         self.Bind(wx.EVT_MENU, self.NewPlaylist, id=ID_NEWPL)
         self.Bind(wx.EVT_MENU, self.EditPlaylist, id=ID_EDITPL)
+        self.Bind(wx.EVT_MENU, self.ListKeys, id=ID_KEYS)
         
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -124,29 +146,30 @@ class MyFrame(wx.Frame):
         MenuBar = wx.MenuBar()
 
         file_menu = wx.Menu()
-        file_menu.Append(ID_OPEN, "&Open","Open file")
-        file_menu.Append(ID_SAVE, "&Save","Save Image")
-        file_menu.Append(ID_QUIT, "&Exit","Exit")
+        file_menu.Append(ID_OPEN, "&Open\tO","Open file")
+        file_menu.Append(ID_SAVE, "&Save\tS","Save Image")
+        file_menu.Append(ID_QUIT, "&Exit\tQ","Exit")
    
         edit_menu = wx.Menu()
-        edit_menu.Append(ID_CALIBRATE, "Cali&brate", "Calibrate image")
-        edit_menu.Append(ID_CALIPER, "New &Caliper", "Start new caliper")
-        edit_menu.Append(ID_DOODLE, "Doodle", "Doodle on the canvas")
-        edit_menu.Append(ID_CLEAR, "Clear", "Clear the doodle")
+        edit_menu.Append(ID_CALIBRATE, "Cali&brate\tB", "Calibrate image")
+        edit_menu.Append(ID_CALIPER, "New &Caliper\tC", "Start new caliper")
+        edit_menu.Append(ID_DOODLE, "&Doodle\tD", "Doodle on the canvas")
+        edit_menu.Append(ID_CLEAR, "Clear\tX", "Clear the doodle")
         
         image_menu = wx.Menu()
-        image_menu.Append(ID_ROTATELEFT, "Rotate &Left", "Rotate image left")
-        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right", "Rotate image right")
+        image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tL", "Rotate image left")
+        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right\tR", "Rotate image right")
         image_menu.Append(ID_CROP, "Crop", "Crop the image")
         
         playlist_menu = wx.Menu()
-        playlist_menu.Append(ID_PREVIOUS, "Previous", "Previous image")
-        playlist_menu.Append(ID_NEXT, "Next", "Next image")
+        playlist_menu.Append(ID_PREVIOUS, "Previous\tPGUP", "Previous image")
+        playlist_menu.Append(ID_NEXT, "Next\tPGDN", "Next image")
         playlist_menu.Append(ID_NEWPL, "New Playlist", 'Make New Playlist')
         playlist_menu.Append(ID_EDITPL, "Edit Playlist", 'Edit Playlist')
         
         help_menu = wx.Menu()
         help_menu.Append(ID_ABOUT, "About", "About this application")
+        help_menu.Append(ID_KEYS, 'List keyboard shortcuts', 'Shortcuts')
         
         MenuBar.Append(file_menu, "&File")
         MenuBar.Append(edit_menu, "&Edit")
@@ -205,6 +228,12 @@ class MyFrame(wx.Frame):
     def About(self, event):
         """Display about message"""
         dlg = wx.MessageDialog(self, _about, "About Eepee", wx.OK)
+        dlg.ShowModal()
+        dlg.Destroy()
+        
+    def ListKeys(self, event):
+        """List the keyboard shortcuts"""
+        dlg = wx.MessageDialog(self, shortcuts, 'Shortcuts', wx.OK)
         dlg.ShowModal()
         dlg.Destroy()
 
@@ -586,9 +615,11 @@ class Canvas(wx.Window):
         """Toggle doodle on or off"""
         if self.activetool == "doodle":
             self.activetool = None
+            self.frame.toolbar.ToggleTool(ID_DOODLE, 0)
             
         else:
             self.activetool = "doodle"
+            self.frame.toolbar.ToggleTool(ID_DOODLE, 1)
             
     def TranslateFrame(self, frame, rotation, imagewidth, imageheight):
         """Utility function to translate frame coordinates according
