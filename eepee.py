@@ -44,17 +44,17 @@ shortcuts = """
 Keyboard and mouse shortcuts:
 =============================
 
-o - Open file\n
-s - Save file\n
-r - Rotate right\n
-l - Rotate left\n
-b - Calibrate\n
-c - Start caliper\n
-d - Start/stop doodle\n
-x - Clear doodle\n
-PgDn - Next image\n
-PgDn - Prev image\n
-q - Quit\n\n
+Ctrl-o  - Open file\n
+Ctrl-s  - Save file\n
+Ctrl-r  - Rotate right\n
+Ctrl-l  - Rotate left\n
+Ctrl-b  - Calibrate\n
+Ctrl-c  - Start caliper\n
+Ctrl-d  - Start/stop doodle\n
+Ctrl-x  - Clear doodle\n
+PgDn    - Next image\n
+PgDn    - Prev image\n
+Ctrl-q  - Quit\n\n
 Left click - Start new caliper\n
 Right click - Removes caliper\n
 """
@@ -146,19 +146,19 @@ class MyFrame(wx.Frame):
         MenuBar = wx.MenuBar()
 
         file_menu = wx.Menu()
-        file_menu.Append(ID_OPEN, "&Open\tO","Open file")
-        file_menu.Append(ID_SAVE, "&Save\tS","Save Image")
-        file_menu.Append(ID_QUIT, "&Exit\tQ","Exit")
+        file_menu.Append(ID_OPEN, "&Open\tCtrl-O","Open file")
+        file_menu.Append(ID_SAVE, "&Save\tCtrl-S","Save Image")
+        file_menu.Append(ID_QUIT, "&Exit\tCtrl-Q","Exit")
    
         edit_menu = wx.Menu()
-        edit_menu.Append(ID_CALIBRATE, "Cali&brate\tB", "Calibrate image")
-        edit_menu.Append(ID_CALIPER, "New &Caliper\tC", "Start new caliper")
-        edit_menu.Append(ID_DOODLE, "&Doodle\tD", "Doodle on the canvas")
-        edit_menu.Append(ID_CLEAR, "Clear\tX", "Clear the doodle")
+        edit_menu.Append(ID_CALIBRATE, "Cali&brate\tCtrl-B", "Calibrate image")
+        edit_menu.Append(ID_CALIPER, "New &Caliper\tCtrl-C", "Start new caliper")
+        edit_menu.Append(ID_DOODLE, "&Doodle\tCtrl-D", "Doodle on the canvas")
+        edit_menu.Append(ID_CLEAR, "Clear\tCtrl-X", "Clear the doodle")
         
         image_menu = wx.Menu()
-        image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tL", "Rotate image left")
-        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right\tR", "Rotate image right")
+        image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tCtrl-L", "Rotate image left")
+        image_menu.Append(ID_ROTATERIGHT, "Rotate &Right\tCtrl-R", "Rotate image right")
         image_menu.Append(ID_CROP, "Crop", "Crop the image")
         
         playlist_menu = wx.Menu()
