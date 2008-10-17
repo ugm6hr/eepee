@@ -2,9 +2,10 @@ EPviewer
 (c)Raja S
 rajajs {at} gmail {dot} com
 
+
 version 0.9.1
 --------------
-
+October 15, 2008
 * Bug fix - crop frame can extend outside image borders now
 * Bug fix - calipers are removed when calibration is cancelled after second attempt
 * Left click on canvas starts new caliper
