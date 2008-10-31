@@ -13,6 +13,7 @@ import wx
 from customrubberband import RubberBand
 from geticons import getBitmap
 from playlist_select import PlayListSelector
+from config_manager import PreferenceDialog, Config
 
 ## ------------------------------------------
 _title          = "EP viewer"
@@ -37,7 +38,7 @@ ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
 ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
 ID_CLEAR = wx.NewId()   ; ID_ABOUT = wx.NewId()
 ID_NEWPL = wx.NewId() ; ID_EDITPL = wx.NewId()
-ID_KEYS = wx.NewId()
+ID_KEYS = wx.NewId() ; ID_PREF = wx.NewId()
 
 
 shortcuts = """
@@ -137,6 +138,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.NewPlaylist, id=ID_NEWPL)
         self.Bind(wx.EVT_MENU, self.EditPlaylist, id=ID_EDITPL)
         self.Bind(wx.EVT_MENU, self.ListKeys, id=ID_KEYS)
+        self.Bind(wx.EVT_MENU, self.editPref, id=ID_PREF)
         
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -155,6 +157,7 @@ class MyFrame(wx.Frame):
         edit_menu.Append(ID_CALIPER, "New &Caliper\tCtrl-C", "Start new caliper")
         edit_menu.Append(ID_DOODLE, "&Doodle\tCtrl-D", "Doodle on the canvas")
         edit_menu.Append(ID_CLEAR, "Clear\tCtrl-X", "Clear the doodle")
+        edit_menu.Append(ID_PREF, "Preferences", "Edit preferences")
         
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tCtrl-L", "Rotate image left")
@@ -230,6 +233,11 @@ class MyFrame(wx.Frame):
         dlg = wx.MessageDialog(self, _about, "About Eepee", wx.OK)
         dlg.ShowModal()
         dlg.Destroy()
+     
+    def editPref(self, event):
+        """Edit preferences"""
+        dlg = PreferenceDialog(self, -1, 'Edit preferences', self.canvas.configfile)
+        dlg.ShowModal()
         
     def ListKeys(self, event):
         """List the keyboard shortcuts"""
@@ -260,9 +268,10 @@ class MyFrame(wx.Frame):
         """Triggered on opening file"""
         # selection dialog to select file
         # add playlist files to filter
-        filter = 'Playlist|*.plst|' + accepted_wildcards 
-        dlg = wx.FileDialog(self ,style=wx.OPEN,
-                            wildcard=filter)
+        filter = 'Playlist|*.plst|' + accepted_wildcards
+        print self.canvas.default_dir
+        dlg = wx.FileDialog(self,defaultDir = self.canvas.default_dir,
+                            style=wx.OPEN, wildcard=filter)
         dlg.SetFilterIndex(5) #set 'all files' as default
         if dlg.ShowModal() == wx.ID_OK:
             filepath = dlg.GetPath()
@@ -352,10 +361,15 @@ class Canvas(wx.Window):
         wx.Window.__init__(self, parent, -1, style=wx.NO_FULL_REPAINT_ON_RESIZE)
         self.SetBackgroundColour('white')
         self.frame = wx.GetTopLevelParent(self)
-                
+
+        # User modifiable options
+        self.configfile = self.getConfigfilepath()
+        self.config =  Config(self.configfile)
+        self.setOptions()                
+        
         self.rubberband = RubberBand(self)
         self.doodle = Doodle(self)
-        
+            
         # Image height will always be 1000 units unless zoomed in
         self.maxheight = 1000
         
@@ -384,7 +398,39 @@ class Canvas(wx.Window):
         # during canvas initiation in Linux - so compromising my delaying the
         # binding by 1 second seems to work        
         wx.FutureCall(1000, self.BindOnPaint)
+    
+    def getConfigfilepath(self):
+        """Depending on os, get the path to the config file"""
+        if os.name == 'nt':
+            return 'config.ini'
+        elif os.name == 'posix':
+            return os.path.expanduser('~/.eepee.rc')
+    
+    def setOptions(self):
+        """Depending on the prefs stored in the config file,
+        set the options"""
+        print 'config options', self.config.options
+        self.default_dir = self.config.options.get('default_dir')
+        self.caliper_width = int(self.config.options.get('caliper_width'))
+        self.caliper_color = self.config.options.get('caliper_color')
+        self.active_caliper_color = self.config.options.get('active_caliper_color')
+        self.doodle_width = int(self.config.options.get('doodle_width'))
+        self.doodle_color = self.config.options.get('doodle_color')
         
+        measurement = self.config.options.get('caliper_measurement')
+        if measurement == 'Time':
+            self.timedisplay = True
+            self.ratedisplay = False
+        elif measurement == 'Rate':
+            self.timedisplay = False
+            self.ratedisplay = True
+        elif measurement == 'Both':
+            self.timedisplay = True
+            self.ratedisplay = True
+        elif measurement == 'None':
+            self.timedisplay = False
+            self.ratedisplay = False
+       
     def BindOnPaint(self):
         self.Bind(wx.EVT_PAINT, self.OnPaint) 
 
@@ -800,7 +846,8 @@ class DisplayImage():
         memdc.Blit(0,0,self.canvas.width,self.canvas.height,context,0,0)
         memdc.SelectObject(wx.NullBitmap)
 
-        dlg = wx.FileDialog(self.frame, "Save image as...", os.getcwd(),
+        dlg = wx.FileDialog(self.frame, "Save image as...", 
+                            defaultDir = self.canvas.default_dir,
                             style=wx.SAVE | wx.OVERWRITE_PROMPT,
                             wildcard=accepted_wildcards)
         if dlg.ShowModal() == wx.ID_OK:
@@ -929,8 +976,8 @@ class Caliper():
         self.y1, self.y2 = 0, 0
         self.y3 = self.canvas.maxheight
         
-        self.pen = wx.Pen(wx.Colour(0, 0, 0), 1, wx.SOLID)
-        self.hittable_pen = wx.Pen(wx.Colour(255,0,0), 1, wx.SOLID)
+        self.pen = wx.Pen(self.canvas.caliper_color, self.canvas.caliper_width, wx.SOLID)
+        self.hittable_pen = wx.Pen(self.canvas.active_caliper_color, self.canvas.caliper_width, wx.SOLID)
         
         # 1 - positioning first caliperleg, 2 - positioning second caliperleg
         # 3 - positioned both caliperlegs, 4 - repositioning whole caliper
@@ -1154,8 +1201,9 @@ class Doodle():
     """Doodle on the image canvas"""
     def __init__(self, parent):
         self.lines = [] #list of doodle coords
-        self.pen =wx.Pen(wx.Colour(255, 0, 0), 2, wx.SOLID)
         self.canvas = parent
+        self.pen =wx.Pen(self.canvas.doodle_color, self.canvas.doodle_width, wx.SOLID)
+        
         
     def Draw(self, dc):
         """Draw the lines for the doodle"""
