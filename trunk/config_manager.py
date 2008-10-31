@@ -5,7 +5,6 @@
 import wx
 import ConfigParser
 import sys, os
-import pprint
 
 class Config():
     """The configuration stored in a config file"""
@@ -191,34 +190,9 @@ class PreferenceDialog(wx.Dialog):
         """Write to file and close"""
         self.getOptions()
         self.config.options = self.options
-        print 'saving options', self.config.options
         self.config.writeOptions()
         self.Destroy()
 
 # end of class PreferenceDialog
 
 
-class MyApp(wx.App):
-    def OnInit(self):
-        wx.InitAllImageHandlers()
-        
-        options = {
-           'default_dir' : '/home/raja',
-           'caliper_width' : '1',
-           'caliper_color' : 'black',
-           'active_caliper_color' : 'red',
-           'caliper_measurement' : 'Time (ms)',
-           'doodle_width' : '1',
-           'doodle_color' : 'red'
-           }
-        
-        Preferences = PreferenceDialog(None, -1, "", '/data/tmp/test.ini')
-        self.SetTopWindow(Preferences)
-        Preferences.Show()
-        return 1
-
-# end of class MyApp
-
-if __name__ == "__main__":
-    app = MyApp(0)
-    app.MainLoop()
