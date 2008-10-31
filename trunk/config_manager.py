@@ -4,7 +4,7 @@
 
 import wx
 import ConfigParser
-import sys
+import sys, os
 import pprint
 
 class Config():
@@ -13,16 +13,17 @@ class Config():
         self.parser = ConfigParser.ConfigParser()
         self.configfile = configfile
         self.setDefault()
+        self.readOptions()
 
     def setDefault(self):
         """Initialize with default values"""
         self.options = {
-                   'default_dir' : "''",
-                   'caliper_width' : 1,
+                   'default_dir' : os.path.abspath(os.curdir),
+                   'caliper_width' : '1',
                    'caliper_color' : 'black',
                    'active_caliper_color' : 'red',
                    'caliper_measurement' : 'Time',
-                   'doodle_width' : 1,
+                   'doodle_width' : '1',
                    'doodle_color' : 'red'
                    }
         
@@ -30,11 +31,13 @@ class Config():
     def readOptions(self):
         try:
             self.parser.read(self.configfile)
+            for key in self.options:
+                self.options[key] = self.parser.get('options', key)
+
         except: # if file is not present or is damaged
             return # donot change defaults
             
-        for key in self.options:
-            self.options[key] = self.parser.get('options', key)
+
 
     def writeOptions(self):
         try:
@@ -147,8 +150,6 @@ class PreferenceDialog(wx.Dialog):
 
     def setOptions(self):
         """Set values as per given options"""
-        print 'setting ...'
-        print self.options
         self.direntry.SetValue(
                             self.options.get('default_dir', ''))
         self.cwidthcombo.SetStringSelection(
@@ -166,8 +167,6 @@ class PreferenceDialog(wx.Dialog):
 
     def getOptions(self):
         """Get values"""
-        print 'getting ...'
-        
         self.options['default_dir'] = self.direntry.GetValue()
         self.options['caliper_width'] = self.cwidthcombo.GetValue()
         self.options['caliper_color'] = self.ccolorcombo.GetValue()
@@ -175,7 +174,7 @@ class PreferenceDialog(wx.Dialog):
         self.options['caliper_measurement'] = self.measurementcombo.GetValue()
         self.options['doodle_width'] = self.dwidthcombo.GetValue()
         self.options['doodle_color'] = self.dcolorcombo.GetValue()
-        print self.options
+
 
     def chooseDir(self, event): # wxGlade: PreferenceDialog.<event_handler>
         dlg = wx.DirDialog(self)
@@ -192,6 +191,7 @@ class PreferenceDialog(wx.Dialog):
         """Write to file and close"""
         self.getOptions()
         self.config.options = self.options
+        print 'saving options', self.config.options
         self.config.writeOptions()
         self.Destroy()
 
