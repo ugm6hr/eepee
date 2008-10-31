@@ -239,6 +239,9 @@ class MyFrame(wx.Frame):
         dlg = PreferenceDialog(self, -1, 'Edit preferences', self.canvas.configfile)
         dlg.ShowModal()
         
+        self.canvas.config.readOptions()
+        self.canvas.setOptions()
+        
     def ListKeys(self, event):
         """List the keyboard shortcuts"""
         dlg = wx.MessageDialog(self, shortcuts, 'Shortcuts', wx.OK)
@@ -269,7 +272,6 @@ class MyFrame(wx.Frame):
         # selection dialog to select file
         # add playlist files to filter
         filter = 'Playlist|*.plst|' + accepted_wildcards
-        print self.canvas.default_dir
         dlg = wx.FileDialog(self,defaultDir = self.canvas.default_dir,
                             style=wx.OPEN, wildcard=filter)
         dlg.SetFilterIndex(5) #set 'all files' as default
@@ -409,7 +411,6 @@ class Canvas(wx.Window):
     def setOptions(self):
         """Depending on the prefs stored in the config file,
         set the options"""
-        print 'config options', self.config.options
         self.default_dir = self.config.options.get('default_dir')
         self.caliper_width = int(self.config.options.get('caliper_width'))
         self.caliper_color = self.config.options.get('caliper_color')
@@ -1020,9 +1021,16 @@ class Caliper():
                 self.measurement *= self.canvas.calibration
                 measurement_units = 'ms'
                 
-            dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
+                if self.canvas.ratedisplay: # will display rate only if calibrated
+                    rate = 60000 / self.measurement
+                    dc.DrawText('%s bpm' %(int(rate)),
                        self.canvas.WorldToPixels((self.x1 + self.x2)/2,'xaxis'),
-                       self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
+                       self.canvas.WorldToPixels(self.y2 + 40, 'yaxis'))
+            
+            if self.canvas.timedisplay:
+                dc.DrawText('%s %s' %(int(self.measurement), measurement_units),
+                           self.canvas.WorldToPixels((self.x1 + self.x2)/2,'xaxis'),
+                           self.canvas.WorldToPixels(self.y2 - 40, 'yaxis'))
         
         
     def handleMouseEvents(self, event):
