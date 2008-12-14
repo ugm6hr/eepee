@@ -1,0 +1,67 @@
+# Eepee - documentation #
+
+
+## Introduction ##
+
+Eepee is a comprehensive suite for analyzing electrocardiogram and
+electrophysiology study tracings. 
+
+### Who needs this?  ###
+
+Usually cardiac electrophysiologists or cardiologists who need to
+present, discuss or analyze ECG and EP tracings.
+
+### Why not powerpoint? ###
+
+Slide presentations are commonly used when tracings need to be
+presented to a wider audience and discussed. The advantage is that
+the presenter is often familiar with these applications and additional textual
+material can be presented as more slides. However, the major
+disadvantage is an inability to dynamically make measurements. 
+
+### Author and License ###
+
+Copyleft 2008 Raja J Selvaraj <rajajs@gmail.com>
+
+Eepee is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(if you prefer) any later version.
+Eepee is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with Eepee; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+### Main features ###
+
+ - Opens most image types
+ - Images can be rotated and cropped
+ - Each image can be individually calibrated
+ - Rotation, cropping calibration and notes are saved between
+ sessions
+ - Multiple calipers can be used and calipers can be moved and resized
+ 
+### Is it safe to use? ###
+
+Eepee is still in development and is therefore should not be
+considered stable. It comes with NO WARRANTY and you must use it at
+your risk. However, it does not modify any of the images directly and
+therefore there is no risk that they will be damaged or deleted. 
+
+
+## Obtaining and installing ##
+
+Eepee can be downloaded from
+[here](http://code.google.com/p/eepee/). Installation for windows and
+linux is as follows. At present there is no support for OSX.
+
+### Microsoft Windows ###
+
+Download the 'setup.exe' file. 
+ 
+
+
+ 
