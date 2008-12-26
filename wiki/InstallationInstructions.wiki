@@ -1,6 +1,8 @@
 #summary How to install.
 #labels Featured
 
+# TODO: Have to update instructions for Linux
+
 = Windows =
 
   * Method 1: Download the installer from the home page and run it to install the program. 
