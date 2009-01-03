@@ -1,4 +1,4 @@
-# Eepee - documentation #
+# Eepee - documentation #v
 
 
 ## Introduction ##
@@ -51,6 +51,11 @@ considered stable. It comes with NO WARRANTY and you must use it at
 your risk. However, it does not modify any of the images directly and
 therefore there is no risk that they will be damaged or deleted. 
 
+### Credits ###
+Code written in [Python](http://www.python.org)
+Most development done on GNU/Linux
+Windows exe compiled using [Pyinstaller](http://pyinstaller.python-hosting.com/)
+Windows installer created using [Innosetup](http://www.innosetup.com)
 
 ## Obtaining and installing ##
 
@@ -60,8 +65,34 @@ linux is as follows. At present there is no support for OSX.
 
 ### Microsoft Windows ###
 
-Download the 'setup.exe' file. 
- 
+Download the 'setup.exe' file. Running the exe starts an installer.
+The default location for installation is in 'Program files', but can
+be changed at time of installer. 
+Note that there are no registry entries or other systemwide
+entries. Therefore the directory 'eepee' can be copied elsewhere and
+eepee would still work. 
+Tested and known to work in Windows 2000, XP and Vista.
 
+### GNU / Linux ###
+
+#### Debian based systems ####
+
+On Ubuntu and other Debian based systems, the debian package (*.deb)
+can be used. Just double clicking on the file should start the package
+manager.**sudo dpkg -i eepee_abc.deb** will also work.
+
+### All linux distributions ###
+Install the dependencies - these are
+1. Python (Will already be installed on most Linux systems)
+2. Wxpython (>=2.6)
+3. Python Imaging library
+
+Download the archive (*.tar.gz) and unzip it somewhere. Then run the
+'install.py' script with adminstrator priveleges and with the argument
+install - on Ubuntu this will be
+**sudo python install.py install**. It is also possible to run the
+program without installation by running 'eepee.py' from the directory
+itself.
+Thus python **eepee.py** will work on windows and linux.
 
  
