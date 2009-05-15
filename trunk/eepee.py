@@ -18,28 +18,28 @@ from config_manager import PreferenceDialog, Config
 ## ------------------------------------------
 _title          = "EP viewer"
 _about          = """
-Eepee v 0.9.1
+Eepee v 0.9.3
 An application to view, analyze and present EP tracings\n
 Author: Raja S. 
 rajajs@gmail.com
 License: GPL\n
 For more information, help and for updates visit
 http:\\code.google.com\p\eepee\n"""
-_version = "0.9.1"
+_version = "0.9.3"
 _author = "Raja Selvaraj"
 
 #------------------------------------------------------------------------------
 # Global variables
-ID_OPEN     =   wx.NewId()  ;   ID_UNSPLIT = wx.NewId()
-ID_SAVE     =   wx.NewId()  ;   ID_CALIPER = wx.NewId()
-ID_QUIT     =   wx.NewId()  ;   ID_CROP  =   wx.NewId()  
-ID_ROTATERIGHT = wx.NewId() ;   ID_ROTATELEFT = wx.NewId()
-ID_CALIBRATE = wx.NewId()   ;   ID_DOODLE = wx.NewId()
-ID_PREVIOUS = wx.NewId()    ;   ID_NEXT = wx.NewId()
-ID_CLEAR = wx.NewId()   ; ID_ABOUT = wx.NewId()
-ID_NEWPL = wx.NewId() ; ID_EDITPL = wx.NewId()
-ID_KEYS = wx.NewId() ; ID_PREF = wx.NewId()
-
+ID_OPEN        = wx.NewId()    ;   ID_UNSPLIT    = wx.NewId()
+ID_SAVE        = wx.NewId()    ;   ID_CALIPER    = wx.NewId()
+ID_QUIT        = wx.NewId()    ;   ID_CROP       = wx.NewId()  
+ID_ROTATERIGHT = wx.NewId()    ;   ID_ROTATELEFT = wx.NewId()
+ID_CALIBRATE   = wx.NewId()    ;   ID_DOODLE     = wx.NewId()
+ID_PREVIOUS    = wx.NewId()    ;   ID_NEXT       = wx.NewId()
+ID_CLEAR       = wx.NewId()    ;   ID_ABOUT      = wx.NewId()
+ID_NEWPL       = wx.NewId()    ;   ID_EDITPL     = wx.NewId()
+ID_KEYS        = wx.NewId()    ;   ID_PREF       = wx.NewId()
+ID_CALIPERREMOVE = wx.NewId()
 
 shortcuts = """
 Keyboard and mouse shortcuts:
@@ -139,7 +139,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.EditPlaylist, id=ID_EDITPL)
         self.Bind(wx.EVT_MENU, self.ListKeys, id=ID_KEYS)
         self.Bind(wx.EVT_MENU, self.editPref, id=ID_PREF)
-        
+        self.Bind(wx.EVT_MENU, self.canvas.RemoveAllCalipers, id=ID_CALIPERREMOVE)
+
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
@@ -155,6 +156,7 @@ class MyFrame(wx.Frame):
         edit_menu = wx.Menu()
         edit_menu.Append(ID_CALIBRATE, "Cali&brate\tCtrl-B", "Calibrate image")
         edit_menu.Append(ID_CALIPER, "New &Caliper\tCtrl-C", "Start new caliper")
+        edit_menu.Append(ID_CALIPERREMOVE, "Remove Calipers", "Remove all calipers")
         edit_menu.Append(ID_DOODLE, "&Doodle\tCtrl-D", "Doodle on the canvas")
         edit_menu.Append(ID_CLEAR, "Clear\tCtrl-X", "Clear the doodle")
         edit_menu.Append(ID_PREF, "Preferences", "Edit preferences")
@@ -196,6 +198,7 @@ class MyFrame(wx.Frame):
         (True, "SEP", '', '', ''),
         (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
         (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+        (False, ID_CALIPERREMOVE, "Remove Calipers", "Remove all calipers", "caliper_remove"),
         (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
         (False, ID_CLEAR, "Clear", "Clear the doodle", "clear"),
         (True, "SEP", '', '', ''),
@@ -638,6 +641,11 @@ class Canvas(wx.Window):
         self.caliperlist.append(Caliper(self))
         self.activecaliperindex = len(self.caliperlist)-1
         self.activetool = "caliper"
+
+    def RemoveAllCalipers(self, event):
+        """Remove all the existing calipers"""
+        self.caliperlist = []
+        self._FGchanged = True
         
     def Calibrate(self, event):
         """Calibrate / recalibrate image"""

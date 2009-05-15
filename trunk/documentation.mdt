@@ -33,6 +33,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Eepee; if not, write to the Free Software
+
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 ### Main features ###
@@ -81,7 +82,7 @@ On Ubuntu and other Debian based systems, the debian package (*.deb)
 can be used. Just double clicking on the file should start the package
 manager.**sudo dpkg -i eepee_abc.deb** will also work.
 
-### All linux distributions ###
+#### All linux distributions ####
 Install the dependencies - these are
 1. Python (Will already be installed on most Linux systems)
 2. Wxpython (>=2.6)
@@ -95,4 +96,23 @@ program without installation by running 'eepee.py' from the directory
 itself.
 Thus python **eepee.py** will work on windows and linux.
 
- 
+
+## Using Eepee  ##
+
+### Preparing the images ###
+
+
+
+### Calibrating the image ###
+
+### Using calipers ###
+
+### Making notes ###
+
+### Using playlists ###
+
+### Doodling ###
+
+### Changing settings ###
+
+
