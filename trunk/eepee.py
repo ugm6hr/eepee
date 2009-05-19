@@ -486,7 +486,14 @@ class Canvas(wx.Window):
         self.width, self.height = self.GetSize()
         
         # update / create the buffer for the buffered dc
-        self.buffer = wx.EmptyBitmap(self.width, self.height)
+        
+        image = wx.EmptyImage(self.width, s
+                              elf.height)
+        wx.Image.Create(image,self.width, self.height, False)
+        wx.Image.SetRGBRect(image, wx.Rect(0, 0, self.width, self.height),
+                            255, 255, 255)        
+        self.buffer = wx.BitmapFromImage(image)
+        
         
         if self.resizedimage: # only if image is loaded
             self._BGchanged = True
