@@ -141,6 +141,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.editPref, id=ID_PREF)
         self.Bind(wx.EVT_MENU, self.canvas.RemoveAllCalipers, id=ID_CALIPERREMOVE)
 
+        self.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
@@ -486,14 +487,11 @@ class Canvas(wx.Window):
         self.width, self.height = self.GetSize()
         
         # update / create the buffer for the buffered dc
-        
-        image = wx.EmptyImage(self.width, s
-                              elf.height)
+        image = wx.EmptyImage(self.width, self.height)
         wx.Image.Create(image,self.width, self.height, False)
         wx.Image.SetRGBRect(image, wx.Rect(0, 0, self.width, self.height),
                             255, 255, 255)        
         self.buffer = wx.BitmapFromImage(image)
-        
         
         if self.resizedimage: # only if image is loaded
             self._BGchanged = True
