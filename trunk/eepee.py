@@ -15,6 +15,16 @@ from geticons import getBitmap
 from playlist_select import PlayListSelector
 from config_manager import PreferenceDialog, Config
 
+## Import Image plugins separately and then convince Image that is
+## fully initialized - needed when compiling for windows, otherwise
+## I am not able to open tiff files with the windows binaries
+import PngImagePlugin
+import BmpImagePlugin
+import TiffImagePlugin
+import GifImagePlugin
+import JpegImagePlugin
+Image._initialized = 2
+
 ## ------------------------------------------
 _title          = "EP viewer"
 _about          = """
@@ -622,7 +632,7 @@ class Canvas(wx.Window):
         self.doodle.Draw(dc)
         #self._doodlechanged = False
     
-    def ClearDoodle(self, event):
+    def ClearDoodle(self , event):
         self.doodle.lines = []
         self._FGchanged = True
         #self._doodlechanged = True
