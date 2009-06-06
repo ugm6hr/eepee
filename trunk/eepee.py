@@ -2,6 +2,7 @@
 
 from __future__ import division
 import sys, os, copy
+import glob
 try:
     import cPickle as pickle
 except ImportError:
@@ -14,6 +15,7 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 from playlist_select import PlayListSelector
 from config_manager import PreferenceDialog, Config
+from ppt_export import Converter_MS
 
 ## Import Image plugins separately and then convince Image that is
 ## fully initialized - needed when compiling for windows, otherwise
@@ -49,7 +51,7 @@ ID_PREVIOUS    = wx.NewId()    ;   ID_NEXT       = wx.NewId()
 ID_CLEAR       = wx.NewId()    ;   ID_ABOUT      = wx.NewId()
 ID_NEWPL       = wx.NewId()    ;   ID_EDITPL     = wx.NewId()
 ID_KEYS        = wx.NewId()    ;   ID_PREF       = wx.NewId()
-ID_CALIPERREMOVE = wx.NewId()
+ID_CALIPERREMOVE = wx.NewId()  ;   ID_IMPORT     = wx.NewId()
 
 shortcuts = """
 Keyboard and mouse shortcuts:
@@ -125,7 +127,7 @@ class MyFrame(wx.Frame):
         splittersizer = wx.BoxSizer()
         splittersizer.Add(self.splitter, 1, wx.ALL|wx.EXPAND, 5)
         self.basepanel.SetSizer(splittersizer)
-        
+
         #------------------------------
         self._buildMenuBar()
         self._buildToolBar()
@@ -150,7 +152,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.ListKeys, id=ID_KEYS)
         self.Bind(wx.EVT_MENU, self.editPref, id=ID_PREF)
         self.Bind(wx.EVT_MENU, self.canvas.RemoveAllCalipers, id=ID_CALIPERREMOVE)
-
+        self.Bind(wx.EVT_MENU, self.ImportPresentation, id=ID_IMPORT)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -171,6 +173,7 @@ class MyFrame(wx.Frame):
         edit_menu.Append(ID_DOODLE, "&Doodle\tCtrl-D", "Doodle on the canvas")
         edit_menu.Append(ID_CLEAR, "Clear\tCtrl-X", "Clear the doodle")
         edit_menu.Append(ID_PREF, "Preferences", "Edit preferences")
+        edit_menu.Append(ID_IMPORT, "Import presentatio", "Experimental")
         
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tCtrl-L", "Rotate image left")
@@ -301,12 +304,41 @@ class MyFrame(wx.Frame):
         
         # load file
         self.displayimage.LoadAndDisplayImage(filepath)
-        
+
         ##create a new playlist and display
         #self.InitializeSplitter()
         #self.playlist = PlayList(filepath)
         #self.DisplayPlaylist()
-    
+
+    def ImportPresentation(self, event):
+        """import a presentation as a series of images
+        that can be used in eepee"""
+        filter = 'Presentation|*.ppt|*.odp|All files|*.*'
+        dlg = wx.FileDialog(self, "Choose the presentation file",
+                            style=wx.OPEN, wildcard=filter)
+        if dlg.ShowModal() == wx.ID_OK:
+            path_to_presentation = dlg.GetPath()
+        else:
+            return
+
+        dlg = wx.DirDialog(self, "Choose folder to import to",
+                           style=wx.OPEN)
+        if dlg.ShowModal() == wx.ID_OK:
+            target_folder = dlg.GetPath()
+        else:
+            return
+
+        converter = Converter_MS(path_to_presentation, target_folder)
+        converter.convert()
+
+        firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
+        self.InitializeSplitter()
+        self.playlist = PlayList(firstfile)
+        self.DisplayPlaylist()
+        
+        # load file
+        self.displayimage.LoadAndDisplayImage(firstfile)
+
     def NewPlaylist(self, event):
         """Construct a new playlist"""
         playlist_selector = PlayListSelector(self, [])
