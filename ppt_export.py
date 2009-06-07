@@ -1,5 +1,9 @@
 try:
+    import shutil
+    import commands
+    import os
     import comtypes.client
+
 except:
     pass
     
@@ -26,7 +30,7 @@ class Converter():
 class Converter_MS(Converter):
     """converter using MS office"""
     def __init__(self, path_to_presentation, target_folder):
-        Converter.__init__(path_to_presentation, target_folder)
+        Converter.__init__(self, path_to_presentation, target_folder)
 
     def convert(self):
         """use comtypes to communicate with MSoffice"""
@@ -44,14 +48,34 @@ class Converter_MS(Converter):
         powerpoint.Quit()
 
 class Converter_OO(Converter):
-    """converter using Openoffice"""
+    """converter using Openoffice on linux"""
     def __init__(self, path_to_presentation, target_folder):
-        Converter.__init__(path_to_presentation, target_folder)
+        Converter.__init__(self, path_to_presentation, target_folder)
 
     def convert(self):
         """use unoconv to convert """
         # copy presentation to dir
+        print 'copying ppt'
+        shutil.copy(self.path_to_presentation,self.target_folder)
+        tmp_presentation = os.path.join(self.target_folder,
+                                  os.path.split(self.path_to_presentation)[1])
+        print 'tmp presentation ', tmp_presentation
         # convert to pdf
+        cmd = "unoconv -f pdf %s" %(tmp_presentation)
+        print 'conversion command ', cmd
+        st, output = commands.getstatusoutput(cmd)
+        print 'status ', st, output
+        if st != 0:
+            raise ConverterError("pdf conversion failed")
+        pdf_presentation = os.path.splitext(tmp_presentation)[0] + '.pdf'
+        print 'pdf name ', pdf_presentation
         # use ghostscript to convert pdf to images
+        outfile = os.path.join(self.target_folder, "%03d.jpg")
+        cmd = "gs -dBATCH -dNOPAUSE -r150 -sDEVICE=jpeg " +\
+              "-sOUTPUTFILE=" + outfile + " " +  pdf_presentation
+        print 'gs command ', cmd
+        st, output = commands.getstatusoutput(cmd)
+        print 'status ', st, output
         # delete presentation
-        pass
+        os.remove(tmp_presentation)
+        os.remove(pdf_presentation)
