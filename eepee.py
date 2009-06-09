@@ -333,8 +333,14 @@ class MyFrame(wx.Frame):
             converter = Converter_MS(path_to_presentation, target_folder)
         elif osname == 'posix':
             converter = Converter_OO(path_to_presentation, target_folder)
-        converter.convert()
-
+        
+        self.DisplayMessage("Importing ...")
+        try:
+            converter.convert()
+            self.DisplayMessage("")
+        except ConverterError, msg:
+            self.DisplayMessage("Failed import - %s" %(msg))
+            
         firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
         self.InitializeSplitter()
         self.playlist = PlayList(firstfile)
