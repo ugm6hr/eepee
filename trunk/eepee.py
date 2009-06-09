@@ -15,7 +15,7 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 from playlist_select import PlayListSelector
 from config_manager import PreferenceDialog, Config
-from ppt_export import Converter_MS
+from ppt_export import Converter_MS, Converter_OO
 
 ## Import Image plugins separately and then convince Image that is
 ## fully initialized - needed when compiling for windows, otherwise
@@ -163,6 +163,7 @@ class MyFrame(wx.Frame):
 
         file_menu = wx.Menu()
         file_menu.Append(ID_OPEN, "&Open\tCtrl-O","Open file")
+        file_menu.Append(ID_IMPORT, "Import presentation", "Experimental")
         file_menu.Append(ID_SAVE, "&Save\tCtrl-S","Save Image")
         file_menu.Append(ID_QUIT, "&Exit\tCtrl-Q","Exit")
    
@@ -173,7 +174,6 @@ class MyFrame(wx.Frame):
         edit_menu.Append(ID_DOODLE, "&Doodle\tCtrl-D", "Doodle on the canvas")
         edit_menu.Append(ID_CLEAR, "Clear\tCtrl-X", "Clear the doodle")
         edit_menu.Append(ID_PREF, "Preferences", "Edit preferences")
-        edit_menu.Append(ID_IMPORT, "Import presentatio", "Experimental")
         
         image_menu = wx.Menu()
         image_menu.Append(ID_ROTATELEFT, "Rotate &Left\tCtrl-L", "Rotate image left")
@@ -211,7 +211,7 @@ class MyFrame(wx.Frame):
         (True,  ID_CROP, "Crop image", "Toggle cropping of image", "crop"),
         (True, "SEP", '', '', ''),
         (False, ID_CALIBRATE, "Calibrate", "calibrate image", "calibrate"),
-        (False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
+        #(False, ID_CALIPER, "Caliper", "Start new caliper", "caliper"),
         (False, ID_CALIPERREMOVE, "Remove Calipers", "Remove all calipers", "caliper_remove"),
         (True, ID_DOODLE, "Doodle", "Doodle on canvas", "doodle"),
         (False, ID_CLEAR, "Clear", "Clear the doodle", "clear"),
@@ -313,7 +313,7 @@ class MyFrame(wx.Frame):
     def ImportPresentation(self, event):
         """import a presentation as a series of images
         that can be used in eepee"""
-        filter = 'Presentation|*.ppt|*.odp|All files|*.*'
+        filter = 'Presentation|*.ppt;*.odp|All files|*.*'
         dlg = wx.FileDialog(self, "Choose the presentation file",
                             style=wx.OPEN, wildcard=filter)
         if dlg.ShowModal() == wx.ID_OK:
@@ -328,7 +328,11 @@ class MyFrame(wx.Frame):
         else:
             return
 
-        converter = Converter_MS(path_to_presentation, target_folder)
+        osname = os.name
+        if osname == 'nt':
+            converter = Converter_MS(path_to_presentation, target_folder)
+        elif osname == 'posix':
+            converter = Converter_OO(path_to_presentation, target_folder)
         converter.convert()
 
         firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
