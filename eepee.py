@@ -15,7 +15,7 @@ from customrubberband import RubberBand
 from geticons import getBitmap
 from playlist_select import PlayListSelector
 from config_manager import PreferenceDialog, Config
-from ppt_export import Converter_MS, Converter_OO
+from ppt_export import Converter_MS, Converter_OO, ConverterError
 
 ## Import Image plugins separately and then convince Image that is
 ## fully initialized - needed when compiling for windows, otherwise
