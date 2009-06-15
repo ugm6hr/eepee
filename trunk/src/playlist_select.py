@@ -51,7 +51,8 @@ class PlayListSelector(wx.Dialog):
         self.playlist = playlist
         self.loadPlaylist(self.playlist)
         self.wildcard = "Playlist|*.plst"
-
+        self.lastvisiteddir = ''
+        
     def __set_properties(self):
         self.SetTitle("Playlist_selector")
 
@@ -89,9 +90,11 @@ class PlayListSelector(wx.Dialog):
         filters = 'Supported formats|' + '*.png;*.PNG;*.tif;*.TIF;' +\
           '*.tiff;*.TIFF;*.jpg;*.JPG;*.jpeg;*.JPEG;' +\
           '*.bmp;*.BMP;*.gif;*.GIF'
-        dlg = wx.FileDialog(self,style=wx.OPEN | wx.MULTIPLE,wildcard=filters)
+        dlg = wx.FileDialog(self,style=wx.OPEN | wx.MULTIPLE,wildcard=filters,
+                            defaultDir=self.lastvisiteddir)
         if dlg.ShowModal() == wx.ID_OK:
             selection = dlg.GetPaths()
+            self.lastvisiteddir = os.path.dirname(selection[0])
             self.loadPlaylist(selection)
             #for path in selection:
             #    index = self.playlistctrl.InsertStringItem(sys.maxint,path)
