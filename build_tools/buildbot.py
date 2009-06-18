@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Raja S
-# Time-stamp: <Last  modified by Raja S on 03.06.2009 at 20:21:02 on tp>
+# Time-stamp: <Last  modified by Raja S on 17.06.2009 at 20:57:34 on tp>
 
 """Home brew a build script"""
 import sys
@@ -9,7 +9,9 @@ import shutil
 import glob
 import commands
 # 
-sourcedir = '/data/docs/programming/python/epviewer/svnlocal/trunk'
+rootdir = '/data/docs/programming/python/epviewer/svnlocal/trunk'
+sourcedir = os.path.join(rootdir, '/src')
+
 pyfiles = ['playlist_select.py',
 'eepee.py',
 'geticons.py',
@@ -20,8 +22,8 @@ pyfiles = ['playlist_select.py',
 other_files = ['AUTHORS',
 'CHANGES',
 'eepee',
-'eepee.desktop',
-'eepee.png',
+'/share/eepee.desktop',
+'/share/eepee.png',
 'LICENSE',
 'README']
 
@@ -46,9 +48,13 @@ class Bot():
 
     def copyfiles(self):
         """copy needed files"""
-        needed_files = pyfiles + other_files
-        for f in needed_files:
+
+        for f in pyfiles:
             fullname = os.path.join(sourcedir, f)
+            shutil.copy(fullname, self.workingdir)
+
+        for f in other_files:
+            fullname = os.path.join(rootdir, f)
             shutil.copy(fullname, self.workingdir)
         print "copied all the files...\n"
 

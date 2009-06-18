@@ -341,8 +341,12 @@ class MyFrame(wx.Frame):
         except ConverterError, msg:
             self.DisplayMessage("Failed import - %s" %(msg))
             return
-            
-        firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
+
+        try:
+            firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
+        except IndexError:
+            self.DisplayMessage('Failed import')
+            return
         self.InitializeSplitter()
         self.playlist = PlayList(firstfile)
         self.DisplayPlaylist()
