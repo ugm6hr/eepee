@@ -52,6 +52,8 @@ ID_CLEAR       = wx.NewId()    ;   ID_ABOUT      = wx.NewId()
 ID_NEWPL       = wx.NewId()    ;   ID_EDITPL     = wx.NewId()
 ID_KEYS        = wx.NewId()    ;   ID_PREF       = wx.NewId()
 ID_CALIPERREMOVE = wx.NewId()  ;   ID_IMPORT     = wx.NewId()
+ID_FULLSCREEN = wx.NewId()
+
 
 shortcuts = """
 Keyboard and mouse shortcuts:
@@ -153,6 +155,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.editPref, id=ID_PREF)
         self.Bind(wx.EVT_MENU, self.canvas.RemoveAllCalipers, id=ID_CALIPERREMOVE)
         self.Bind(wx.EVT_MENU, self.ImportPresentation, id=ID_IMPORT)
+        self.Bind(wx.EVT_MENU, self.ToggleFullScreen, id=ID_FULLSCREEN)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
@@ -168,6 +171,7 @@ class MyFrame(wx.Frame):
         file_menu.Append(ID_QUIT, "&Exit\tCtrl-Q","Exit")
    
         edit_menu = wx.Menu()
+        edit_menu.Append(ID_FULLSCREEN, "FullScreen\tCtrl-F", "View fullscreen")
         edit_menu.Append(ID_CALIBRATE, "Cali&brate\tCtrl-B", "Calibrate image")
         edit_menu.Append(ID_CALIPER, "New &Caliper\tCtrl-C", "Start new caliper")
         edit_menu.Append(ID_CALIPERREMOVE, "Remove Calipers", "Remove all calipers")
@@ -283,7 +287,18 @@ class MyFrame(wx.Frame):
         # if an image is loaded, trigger a redraw as canvas size changes
         if self.displayimage.image:
             self.canvas._BGchanged = True    
-    
+
+    def ToggleFullScreen(self, event):
+        """Convert to full screen viewing of canvas"""
+        if self.IsFullScreen():
+            self.ShowFullScreen(False)
+            self.splitter.SplitVertically(self.canvas,self.notebookpanel)
+            self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
+        else:
+            self.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
+            self.splitter.Unsplit()
+
+            
     def SelectFile(self, event):
         """Triggered on opening file"""
         # selection dialog to select file
@@ -570,7 +585,8 @@ class Canvas(wx.Window):
 
     def OnPaint(self, event):
         dc = wx.BufferedPaintDC(self, self.buffer)
-    
+
+        
     def OnMouseEvents(self, event):
         """Handle mouse events depending on active tool"""
         
