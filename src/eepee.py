@@ -313,7 +313,7 @@ class MyFrame(wx.Frame):
     def ImportPresentation(self, event):
         """import a presentation as a series of images
         that can be used in eepee"""
-        filter = 'Presentation|*.ppt;*.odp|All files|*.*'
+        filter = 'Presentation|*.ppt;*.pptx;*.odp|All files|*.*'
         dlg = wx.FileDialog(self, "Choose the presentation file",
                             style=wx.OPEN, wildcard=filter)
         if dlg.ShowModal() == wx.ID_OK:
@@ -340,6 +340,7 @@ class MyFrame(wx.Frame):
             self.DisplayMessage("")
         except ConverterError, msg:
             self.DisplayMessage("Failed import - %s" %(msg))
+            return
             
         firstfile = glob.glob(os.path.join(target_folder, '*.jpg'))[0]
         self.InitializeSplitter()

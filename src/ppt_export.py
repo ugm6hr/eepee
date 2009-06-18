@@ -63,16 +63,21 @@ class Converter_OO(Converter):
         tmp_presentation = os.path.join(self.target_folder,
                                   os.path.split(self.path_to_presentation)[1])
         # convert to pdf
-        cmd = "unoconv -f pdf %s" %(tmp_presentation)
+        cmd = "unoconv -f pdf '%s'" %(tmp_presentation)
         st, output = commands.getstatusoutput(cmd)
+        print 'status', st, output
         if st != 0:
             raise ConverterError("pdf conversion failed")
+
         pdf_presentation = os.path.splitext(tmp_presentation)[0] + '.pdf'
+        if not os.path.exists(pdf_presentation):
+            print 'pdf not found'
+            raise ConverterError("pdf conversion failed")
         # use ghostscript to convert pdf to images
         outfile = os.path.join(self.target_folder, "%03d.jpg")
         cmd = "gs -dBATCH -dNOPAUSE -r150 -sDEVICE=jpeg " +\
-              "-sOUTPUTFILE=" + outfile + " " +  pdf_presentation
+              "-sOUTPUTFILE=" + outfile + " '" +  pdf_presentation + "'"
         st, output = commands.getstatusoutput(cmd)
         # delete presentation
-        os.remove(tmp_presentation)
-        os.remove(pdf_presentation)
+        #os.remove(tmp_presentation)
+        #os.remove(pdf_presentation)
