@@ -10,13 +10,14 @@ except ImportError:
 
 import Image
 import wx
+import tempfile
 
 from customrubberband import RubberBand
 from geticons import getBitmap
 from playlist_select import PlayListSelector
 from config_manager import PreferenceDialog, Config
 from ppt_export import Converter_MS, Converter_OO, ConverterError
-
+from fullscreen_help_dialog import help_dialog
 ## Import Image plugins separately and then convince Image that is
 ## fully initialized - needed when compiling for windows, otherwise
 ## I am not able to open tiff files with the windows binaries
@@ -295,9 +296,22 @@ class MyFrame(wx.Frame):
             self.splitter.SplitVertically(self.canvas,self.notebookpanel)
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
         else:
+            if self.canvas.show_fullscreen_dialog:
+                print 'show full screen is true'
+                self.show_fscreen_help()
             self.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
             self.splitter.Unsplit()
 
+    def show_fscreen_help(self):
+        """Show a help dialog when switching to fullscreen"""
+        dlg = help_dialog(self, -1, "Fullscreen help", '')
+        dlg.ShowModal()
+        if dlg.donotshowagain.GetValue():
+            self.canvas.show_fullscreen_dialog = False
+            self.canvas.config.options['show_fullscreen_dialog'] = 'False'
+            self.canvas.config.writeOptions()
+        
+        dlg.Destroy()
             
     def SelectFile(self, event):
         """Triggered on opening file"""
@@ -336,8 +350,9 @@ class MyFrame(wx.Frame):
         else:
             return
 
+        disposabledir = tempfile.mkdtemp()
         dlg = wx.DirDialog(self, "Choose folder to import to",
-                           style=wx.OPEN)
+                           style=wx.OPEN, defaultPath=disposabledir)
         if dlg.ShowModal() == wx.ID_OK:
             target_folder = dlg.GetPath()
         else:
@@ -493,6 +508,12 @@ class Canvas(wx.Window):
         self.active_caliper_color = self.config.options.get('active_caliper_color')
         self.doodle_width = int(self.config.options.get('doodle_width'))
         self.doodle_color = self.config.options.get('doodle_color')
+
+        self.show_fullscreen_dialog = self.config.options.get(
+            'show_fullscreen_dialog', 'True') == 'True'
+        print 'set at ', self.show_fullscreen_dialog
+        print 'in file', self.config.options.get('show_fullscreen_dialog')
+        print 'all', self.config.options
         
         measurement = self.config.options.get('caliper_measurement')
         if measurement == 'Time':
