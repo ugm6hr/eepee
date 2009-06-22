@@ -167,7 +167,8 @@ class MyFrame(wx.Frame):
 
         file_menu = wx.Menu()
         file_menu.Append(ID_OPEN, "&Open\tCtrl-O","Open file")
-        file_menu.Append(ID_IMPORT, "Import presentation", "Experimental")
+        file_menu.Append(ID_IMPORT, "&Import presentation\tCtrl-P",
+                         "Experimental")
         file_menu.Append(ID_SAVE, "&Save\tCtrl-S","Save Image")
         file_menu.Append(ID_QUIT, "&Exit\tCtrl-Q","Exit")
    
@@ -511,9 +512,6 @@ class Canvas(wx.Window):
 
         self.show_fullscreen_dialog = self.config.options.get(
             'show_fullscreen_dialog', 'True') == 'True'
-        print 'set at ', self.show_fullscreen_dialog
-        print 'in file', self.config.options.get('show_fullscreen_dialog')
-        print 'all', self.config.options
         
         measurement = self.config.options.get('caliper_measurement')
         if measurement == 'Time':

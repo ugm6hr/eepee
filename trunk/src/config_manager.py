@@ -4,7 +4,7 @@
 
 import wx
 import ConfigParser
-import sys, os
+import os
 
 class Config():
     """The configuration stored in a config file"""
@@ -23,7 +23,8 @@ class Config():
                    'active_caliper_color' : 'red',
                    'caliper_measurement' : 'Time',
                    'doodle_width' : '1',
-                   'doodle_color' : 'red'
+                   'doodle_color' : 'red',
+                   'show_fullscreen_dialog' : 'True'
                    }
         
 
@@ -62,11 +63,17 @@ class PreferenceDialog(wx.Dialog):
         self.direntry = wx.TextCtrl(self.mainpanel, -1, "")
         self.dirbutton = wx.Button(self.mainpanel, -1, "Choose dir...")
         self.cwidthtext = wx.StaticText(self.mainpanel, -1, "Caliper width")
-        self.cwidthcombo = wx.ComboBox(self.mainpanel, -1, choices=["1", "2", "3", "4"], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
+        self.cwidthcombo = wx.ComboBox(self.mainpanel, -1,
+                                       choices=["1", "2", "3", "4"],
+                                       style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
         self.ccolortext = wx.StaticText(self.mainpanel, -1, "Caliper color")
-        self.ccolorcombo = wx.ComboBox(self.mainpanel, -1, choices=["black", "white", "red", "blue"], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
-        self.accolortext = wx.StaticText(self.mainpanel, -1, "Active caliper color")
-        self.accolorcombo = wx.ComboBox(self.mainpanel, -1, choices=["red", "black", "white", "blue"], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
+        self.ccolorcombo = wx.ComboBox(self.mainpanel, -1,
+                                       choices=["black", "white", "red", "blue"],
+                                       style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
+        self.accolortext = wx.StaticText(self.mainpanel, -1,
+                                         "Active caliper color")
+        self.accolorcombo = wx.ComboBox(self.mainpanel, -1,
+                                        choices=["red", "black", "white", "blue"],                                       style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
         self.measuretext = wx.StaticText(self.mainpanel, -1, "Measurement")
         self.measurementcombo = wx.ComboBox(self.mainpanel, -1, choices=["Time", "Rate", "Both", "None"], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN)
         self.dwidthtext = wx.StaticText(self.mainpanel, -1, "Doodle width")
