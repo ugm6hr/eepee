@@ -31,14 +31,14 @@ Image._initialized = 2
 ## ------------------------------------------
 _title          = "EP viewer"
 _about          = """
-Eepee v 0.9.3
+Eepee v 0.9.5
 An application to view, analyze and present EP tracings\n
 Author: Raja S. 
 rajajs@gmail.com
 License: GPL\n
 For more information, help and for updates visit
 http:\\code.google.com\p\eepee\n"""
-_version = "0.9.3"
+_version = "0.9.5"
 _author = "Raja Selvaraj"
 
 #------------------------------------------------------------------------------
