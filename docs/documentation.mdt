@@ -1,4 +1,4 @@
-# Eepee - documentation #v
+# Eepee - documentation #
 
 
 ## Introduction ##
@@ -33,7 +33,6 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Eepee; if not, write to the Free Software
-
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 ### Main features ###
@@ -41,22 +40,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  - Opens most image types
  - Images can be rotated and cropped
  - Each image can be individually calibrated
+ - Notes can be saved for each image
  - Rotation, cropping calibration and notes are saved between
  sessions
  - Multiple calipers can be used and calipers can be moved and resized
+ - Images can be grouped and ordered as playlists
  
-### Is it safe to use? ###
-
-Eepee is still in development and is therefore should not be
-considered stable. It comes with NO WARRANTY and you must use it at
-your risk. However, it does not modify any of the images directly and
-therefore there is no risk that they will be damaged or deleted. 
-
 ### Credits ###
-Code written in [Python](http://www.python.org)
-Most development done on GNU/Linux
-Windows exe compiled using [Pyinstaller](http://pyinstaller.python-hosting.com/)
-Windows installer created using [Innosetup](http://www.innosetup.com)
+ - Code written in [Python](http://www.python.org)
+ - Most development done on GNU/Linux
+ - Windows exe compiled using [Pyinstaller](http://pyinstaller.python-hosting.com/)
+ - Windows installer created using [Innosetup](http://www.innosetup.com)
 
 ## Obtaining and installing ##
 
@@ -69,9 +63,6 @@ linux is as follows. At present there is no support for OSX.
 Download the 'setup.exe' file. Running the exe starts an installer.
 The default location for installation is in 'Program files', but can
 be changed at time of installer. 
-Note that there are no registry entries or other systemwide
-entries. Therefore the directory 'eepee' can be copied elsewhere and
-eepee would still work. 
 Tested and known to work in Windows 2000, XP and Vista.
 
 ### GNU / Linux ###
@@ -94,25 +85,52 @@ install - on Ubuntu this will be
 **sudo python install.py install**. It is also possible to run the
 program without installation by running 'eepee.py' from the directory
 itself.
-Thus python **eepee.py** will work on windows and linux.
+Thus python **eepee.py** should work on windows and linux.
 
 
 ## Using Eepee  ##
 
 ### Preparing the images ###
+Open the image in eepee (File -> Open or Ctrl-O).
 
+If the orientation of the image is wrong, it can be corrected by rotating the image (Image -> Rotate or Ctrl-L and Ctrl-R for rotating left and right by 90 degrees respectively.
 
+If you need to crop the image, you can use the crop tool (Image -> Crop).
+
+Note that all these transformations do not affect the original image. However, they are stored so that the transformations are applied again the next time the image is opened.
 
 ### Calibrating the image ###
+Select a known interval on the image. In EP tracings this is usually a scale marker indicating an interval of 200 ms or 100 ms for example. In ECGs, the grid can be used for calibration.
+
+Use the calibrate tool (Edit -> Calibrate, Ctrl-B). This starts a caliper. Position the first limb of the caliper with a left click and then position the second limb at the other end of the marker. A dialog box pops up asking for the interval in milliseconds. Once this is entered, the calibration is stored.
+
+If the image is not calibrated, measurements are displayed as 'units'. After the calibration, all measurements are displayed in milliseconds.
 
 ### Using calipers ###
+At any time, clicking on the image starts a new caliper. A caliper can also be started from the menu (Edit -> Caliper or Ctrl-C). Once started the first limb of the caliper moves with the mouse. A left click fixes the first limb and starts the second limb of the caliper. Another click now fixes the second limb also.
+
+By clicking on any limb of the caliper, it can be moved for repositioning. Clicking on the middle of the caliper picks up the whole caliper for repositioning. Right clicking anywhere on the caliper deletes the caliper.
+
+When there are many calipers on the image, you can delete all of them from the menu (Edit -> Remove Calipers) or by the toolbar icon.
 
 ### Making notes ###
+Beside the main image window is a tabbed window. Clicking on the 'notes' tab opens the note for the image. You can add a note by typing it in here. The note is automatically saved and will be present the next time you open the image.
 
 ### Using playlists ###
+A playlist is a list of image files in sequence for viewing with eepee. When a single image is opened, a playlist is automatically created consisting of all the image files in that directory sorted in order. A playlist can also consists of only selected files in a directory, files not sorted in alphabetical order or files from different directories. A playlist can be created from scratch (Playlist -> New playlist) or by editing a preexisting playlist (Playlist -> Edit playlist). This opens a playlist-editor where files can be added, removed or reordered. Finally the playlist can be saved. A saved playlist can be loaded (File -> Open). 
 
 ### Doodling ###
+Doodling (Edit -> Doodle) can be used to draw on the image. This may be useful to point out features in the image for example. The doodle can be cleared by the clicking on clear doodle (Edit -> Clear). 
 
 ### Changing settings ###
+Select (Edit -> Preferences) to change setting as per your liking. The features that are configurable are
+ - Caliper width (1 pixel by default)
+ - Caliper color (black by default)
+ - Color of active caliper, that is the one selected on mouse over
+ - The format of the measurement displayed with the calipers - time (ms), rate (/min) or both.
+ - Width of the doodle and
+ - Color of the doodle
 
+### Importing presentations ###
+An experimental feature introduced in version 0.9.5 is the ability to import presentation (.ppt, .pptx or .odp). On Windows, this requires powerpoint and essentially uses powerpoint to convert the presentation into a series of images, which are then loaded into eepee. On Linux, this requires openoffice.
 
