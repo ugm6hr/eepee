@@ -24,7 +24,7 @@ class help_dialog(wx.Dialog):
                     "  PgDn    - Prev image  ",
                     "  Ctrl-q  - Quit\n  ",
                     "  Left click - Start new caliper  ",
-                    "  Right click - Removes caliper  " ]))
+                    "  Right click - Removes caliper  \n\n" ]))
         
         self.donotshowagain = wx.CheckBox(self,  -1,"Do not show this message again")
         self.okButton = wx.Button(self, wx.ID_OK, "OK")

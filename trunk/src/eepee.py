@@ -476,7 +476,8 @@ class Canvas(wx.Window):
         # caliper list is a list of all calipers
         self.caliperlist = []
         self.activecaliperindex = -1 #only one caliper is active
-        
+        self.cursors = [wx.CURSOR_ARROW, wx.CURSOR_SIZEWE,
+                        wx.CURSOR_HAND]        
         # flag to check if image is loaded
         self.resizedimage = None
         
@@ -551,13 +552,17 @@ class Canvas(wx.Window):
                         #flip the caliper legs, then just move second leg
                         caliper.x1, caliper.x2 = caliper.x2, caliper.x1
                         caliper.state = 2
+                        self.SetCursor(wx.StockCursor(self.cursors[1]))
                     elif hit_type == 2: #move second leg
                         caliper.state = 2
+                        self.SetCursor(wx.StockCursor(self.cursors[1]))
+
                     elif hit_type == 3: #move whole caliper
                         caliper.x1offset = worldx - caliper.x1
                         caliper.x2offset = caliper.x2 - worldx
                         caliper.state = 4
-                        
+                        self.SetCursor(wx.StockCursor(self.cursors[2]))
+
                 else: # if left click was not to select pre-existing
                     # caliper, start a new one
                     self.NewCaliper(event)
@@ -1169,6 +1174,7 @@ class Caliper():
         # fix second caliper
         elif event.LeftDown() and self.state == 2:
             self.state = 3
+            self.canvas.SetCursor(wx.StockCursor(self.canvas.cursors[0]))
             self.OnCompletion()
             self.canvas.activetool = None
         
@@ -1182,12 +1188,13 @@ class Caliper():
         # stop moving whole caliper
         elif event.LeftDown() and self.state == 4:
             self.state = 3
+            self.canvas.SetCursor(wx.StockCursor(self.canvas.cursors[0]))
             self.canvas.activetool = None
             self.activetool = None
         
         else:
             pass
-        
+
     def isHittable(self, worldx, worldy):
         """Is it within hitting range from current mouse position"""
         if abs(worldx - self.x1) < self.hitrange:
