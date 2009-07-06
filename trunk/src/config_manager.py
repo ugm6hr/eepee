@@ -16,8 +16,20 @@ class Config():
 
     def setDefault(self):
         """Initialize with default values"""
+        # find path to sample files
+        if os.name == 'nt':
+            sampledir = 'C:\Program Files\eepee\samples'
+            #sampledir = os.path.abspath(os.path.join(os.curdir, 'samples'))
+        elif os.name == 'posix':
+            sampledir = '/usr/local/share/eepee/samples'
+        else:
+            pass
+
+        if not os.path.exists(sampledir):
+            sampledir = os.path.abspath(os.curdir)
+            
         self.options = {
-                   'default_dir' : os.path.abspath(os.curdir),
+                   'default_dir' : sampledir,
                    'caliper_width' : '1',
                    'caliper_color' : 'black',
                    'active_caliper_color' : 'red',
@@ -37,7 +49,6 @@ class Config():
         except: # if file is not present or is damaged
             return # donot change defaults
             
-
 
     def writeOptions(self):
         try:
