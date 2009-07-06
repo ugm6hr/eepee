@@ -17,22 +17,26 @@ Commands:
 
 import os
 import sys
-import getopt
 import shutil
 
 source_dir = os.path.dirname(os.path.realpath(__file__))
 install_dir = '/usr/local'
 
 # Files to be installed, as (source file, destination directory)
-FILES = (('eepee.py', 'share/eepee/eepee.py'),
-         ('geticons.py', 'share/eepee/geticons.py'),
-         ('customrubberband.py', 'share/eepee/customrubberband.py'),
-         ('config_manager.py', 'share/eepee/config_manager.py'),
-         ('playlist_select.py', 'share/eepee/playlist_select.py'),
+FILES = (('src/eepee.py', 'share/eepee/eepee.py'),
+         ('src/geticons.py', 'share/eepee/geticons.py'),
+         ('src/customrubberband.py', 'share/eepee/customrubberband.py'),
+         ('src/config_manager.py', 'share/eepee/config_manager.py'),
+         ('src/playlist_select.py', 'share/eepee/playlist_select.py'),
+         ('src/ppt_export.py', 'share/eepee/ppt_export.py'),
+         ('src/fullscreen_help_dialog.py', 'share/eepee/fullscreen_help_dialog.py'),
          ('CHANGES', 'share/eepee/CHANGES'),
          ('LICENSE', 'share/eepee/LICENSE'),
-         ('eepee.desktop', 'share/applications/eepee.desktop'),
-         ('eepee.png', 'share/pixmaps/eepee.png'),
+         ('share/eepee.desktop', 'share/applications/eepee.desktop'),
+         ('share/eepee.png', 'share/pixmaps/eepee.png'),
+         ('samples/1.jpg', 'share/eepee/samples/1.jpg'),
+         ('samples/.1.pkl', 'share/eepee/samples/.1.pkl'),
+         ('samples/2.jpg', 'share/eepee/samples/2.jpg'),
          ('eepee', 'bin/eepee'))
 
 def info():
@@ -101,7 +105,7 @@ def check_dependencies():
         required_found = False
 
     if not required_found:
-        print '\nCould not find all required dependencies!'
+        print '\nFAILED: Could not find all required dependencies!'
         print 'Please install them and try again.'
         sys.exit(1)
 
@@ -114,7 +118,7 @@ if args == 'install':
     check_dependencies()
     print 'Installing eepee to', install_dir, '...\n'
     if not os.access(install_dir, os.W_OK):
-        print 'You do not have write permissions to', install_dir
+        print 'FAILED: You do not have write permissions to', install_dir
         sys.exit(1)
     for src, dst in FILES:
         install(src, dst)
@@ -125,7 +129,7 @@ if args == 'install':
 elif args == 'uninstall':
     print 'Uninstalling eepee from', install_dir, '...\n'
     if not os.access(install_dir, os.W_OK):
-        print 'You do not have write permissions to', install_dir
+        print 'FAILED: You do not have write permissions to', install_dir
         sys.exit(1)
     for src, dst in FILES:
         uninstall(dst)

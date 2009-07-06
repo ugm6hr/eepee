@@ -10,6 +10,7 @@ version 0.9.5
 * Notes and changes are saved now on closing frame using the close button
 * Fixed bug in windows compiled exe which resulted in inability to open tif files
 * Sane default directory when creating playlist
+* Fullscreen mode with Ctrl-F
 * Cursor changes appropriately when repositioning caliper
 
 version 0.9.2

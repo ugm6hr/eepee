@@ -1,0 +1,19 @@
+(dp1
+S'note'
+p2
+VTachycardia with broad QRS of LBBB morphology for the first 4 beats, narrow QRS for last three beats and one beat of intermediate morphology in between. \u000a\u000aAtrial activation sequence remains identical with earliest A in mid CS.\u000aDuring LBBB, VA = 122 ms, CL = 354 ms.\u000anarrow QRS, VA = 78 ms, CL = 309 ms.\u000a\u000aVA and CL increase during LBBB is suggestive of orthodromic AVRT using a left free wall AP. 
+p3
+sS'rotation'
+p4
+I3
+sS'cropframe'
+p5
+(lp6
+I0
+aI0
+aI0
+aI0
+asS'calibration'
+p7
+F1.680672268907563
+s.
