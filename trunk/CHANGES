@@ -2,6 +2,11 @@ EPviewer
 (c)Raja S
 rajajs {at} gmail {dot} com
 
+version 0.9.6
+-------------
+* Eepee freezes on attempting to write image data to unwritable location - fixed
+
+
 version 0.9.5
 --------------
 * Can import powerpoint presentations !

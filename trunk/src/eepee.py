@@ -923,21 +923,26 @@ class DisplayImage():
 
         # save data if it has changed
         if self.data != self.loaded_data:
-            
-            if os.name == 'posix':
-                pickle.dump(self.data, open(self.datafile, 'w'))
-            
-            # in windows, set file attribute to hidden
-            elif os.name == 'nt':
-                ## have to remove the hidden file because it doesnt have
-                ## write permission
-                if os.path.exists(self.datafile):
-                    os.remove(self.datafile)  
-                pickle.dump(self.data, open(self.datafile, 'w'))
-                status = os.popen("attrib +h \"%s\"" %(self.datafile))
-                if status != 0:
-                    pass
-                    #TODO: raise error
+
+            try:
+                if os.name == 'posix':
+                    pickle.dump(self.data, open(self.datafile, 'w'))
+
+                # in windows, set file attribute to hidden
+                elif os.name == 'nt':
+                    ## have to remove the hidden file because it doesnt have
+                    ## write permission
+                    if os.path.exists(self.datafile):
+                        os.remove(self.datafile)  
+                    pickle.dump(self.data, open(self.datafile, 'w'))
+                    status = os.popen("attrib +h \"%s\"" %(self.datafile))
+                    if status != 0:
+                        pass
+
+            except:
+                self.frame.DisplayMessage("Could not save image data for %s" %(
+                        os.path.basename(self.filepath)))
+                
         
     def SaveImage(self, event):
         """
