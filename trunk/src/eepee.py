@@ -161,6 +161,8 @@ class MyFrame(wx.Frame):
         self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
+        self.platform = self.getPlatform()
+        
     def _buildMenuBar(self):
         """Build the menu bar"""
         MenuBar = wx.MenuBar()
@@ -313,7 +315,18 @@ class MyFrame(wx.Frame):
             self.canvas.config.writeOptions()
         
         dlg.Destroy()
-            
+
+    def getPlatform(self):
+        """Find current platform"""
+        platform = sys.platform
+        if platform.startswith('linux'):
+            return 'linux'
+        elif platform == 'win32':
+            return 'windows'
+        elif platform == 'darwin':
+            return 'mac'
+        
+        
     def SelectFile(self, event):
         """Triggered on opening file"""
         # selection dialog to select file
@@ -359,10 +372,12 @@ class MyFrame(wx.Frame):
         else:
             return
 
-        osname = os.name
-        if osname == 'nt':
+        #osname = os.name
+        #if osname == 'nt':
+        if self.platform == 'windows':
             converter = Converter_MS(path_to_presentation, target_folder)
-        elif osname == 'posix':
+        #elif osname == 'posix':
+        elif self.platform == 'linux':
             converter = Converter_OO(path_to_presentation, target_folder)
         
         self.DisplayMessage("Importing ...")
@@ -496,10 +511,13 @@ class Canvas(wx.Window):
     
     def getConfigfilepath(self):
         """Depending on os, get the path to the config file"""
-        if os.name == 'nt':
+        #if os.name == 'nt':
+        if self.platform == 'windows':
             return 'config.ini'
-        elif os.name == 'posix':
+        #elif os.name == 'posix':
+        elif self.platform in ['linux', 'mac']: #TODO: same for mac ?
             return os.path.expanduser('~/.eepee.rc')
+
     
     def setOptions(self):
         """Depending on the prefs stored in the config file,
@@ -925,11 +943,13 @@ class DisplayImage():
         if self.data != self.loaded_data:
 
             try:
-                if os.name == 'posix':
+                #if os.name == 'posix':
+                if self.platform in ['linux', 'mac']:
                     pickle.dump(self.data, open(self.datafile, 'w'))
 
                 # in windows, set file attribute to hidden
-                elif os.name == 'nt':
+                #elif os.name == 'nt':
+                elif self.platform == 'windows':
                     ## have to remove the hidden file because it doesnt have
                     ## write permission
                     if os.path.exists(self.datafile):
@@ -977,7 +997,8 @@ class DisplayImage():
         # format to save is dependent on selected wildcard, default to png
         
         # Looks like the extension is added automatically on windows
-        if os.name == 'posix':
+        #if os.name == 'posix':
+        if self.platform == 'windows':
             savefilename += accepted_formats[filter_index]
         
         try:
