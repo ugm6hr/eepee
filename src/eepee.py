@@ -2,6 +2,7 @@
 
 from __future__ import division
 import sys, os, copy
+import shutil
 import glob
 try:
     import cPickle as pickle
@@ -11,6 +12,8 @@ except ImportError:
 import Image
 import wx
 import tempfile
+
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 
 from customrubberband import RubberBand
 from geticons import getBitmap
@@ -89,7 +92,8 @@ class MyFrame(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title,pos=(0,0),
                           style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
-        
+        self.platform = self.getPlatform()
+        print 'platform is ', self.platform        
         #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
         ## basepanel contains the splitter  
@@ -108,7 +112,8 @@ class MyFrame(wx.Frame):
         self.nb = wx.Notebook(self.notebookpanel)
         self.notepadpanel = wx.Panel(self.nb, -1)
                 
-        self.listbox = wx.ListBox(self.nb, -1)
+        self.listbox = AutoWidthListCtrl(self.nb)
+
         self.notepad = wx.TextCtrl(self.notepadpanel, -1,style=wx.TE_MULTILINE)
         
         self.nb.AddPage(self.listbox, "Playlist")
@@ -158,10 +163,15 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.ImportPresentation, id=ID_IMPORT)
         self.Bind(wx.EVT_MENU, self.ToggleFullScreen, id=ID_FULLSCREEN)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
-        self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
+
+        self.listbox.Bind(wx.EVT_LEFT_DCLICK, self.JumptoImage)
+        #self.listbox.Bind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.OnBeginEdit)
+        self.listbox.Bind(wx.EVT_LIST_END_LABEL_EDIT, self.OnEndEdit)
+
+        #self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.JumptoImage, id = wx.ID_ANY)
         #wx.EVT_LISTBOX_DCLICK(self.listbox, -1, self.JumptoImage)
 
-        self.platform = self.getPlatform()
+
         
     def _buildMenuBar(self):
         """Build the menu bar"""
@@ -400,6 +410,22 @@ class MyFrame(wx.Frame):
         # load file
         self.displayimage.LoadAndDisplayImage(firstfile)
 
+    def OnEndEdit(self, event):
+        """User has edited a filename in the playlist window"""
+        index = event.GetIndex()
+        oldname = self.playlist.playlist[index]
+        newname = os.path.join(os.path.dirname(oldname), event.GetLabel())
+
+        if newname == oldname:
+            pass
+        elif os.path.exists(newname):
+            self.DisplayMessage("Filename already exists!")
+            self.listbox.SetStringItem(index, 0, os.path.basename(oldname)) # TODO
+        else:
+            st = shutil.move(oldname, newname)
+            print st # TODO:
+            self.DisplayMessage("Filename changed")
+        
     def NewPlaylist(self, event):
         """Construct a new playlist"""
         playlist_selector = PlayListSelector(self, [])
@@ -412,11 +438,14 @@ class MyFrame(wx.Frame):
     
     def DisplayPlaylist(self):
         """Display a new playlist in the listbox"""
-        self.listbox.Clear()
+        #print dir(self.listbox)
+        self.listbox.ClearAll()
+        self.listbox.InsertColumn(0, 'Filename')
         for filename in self.playlist.playlist:
-            self.listbox.Append(os.path.split(filename)[1])
-            
-        self.listbox.SetSelection(self.playlist.nowshowing)
+            index = self.listbox.InsertStringItem(sys.maxint,
+                                                  os.path.split(filename)[1])
+        self.listbox.SetItemState(self.playlist.nowshowing,
+                                  wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
     
     def SelectNextImage(self,event):
         self.CleanUp()
@@ -463,6 +492,14 @@ class MyFrame(wx.Frame):
         """On quitting the application"""
         self.CleanUp()
         sys.exit(0)
+
+#------------------------------------------------------------------------------    
+class AutoWidthListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
+    def __init__(self, parent, *args, **kwargs):
+        wx.ListCtrl.__init__(self, parent, -1,
+                             style=wx.LC_REPORT|wx.LC_EDIT_LABELS)
+        ListCtrlAutoWidthMixin.__init__(self)
+
         
 #------------------------------------------------------------------------------    
 class Canvas(wx.Window):
@@ -512,10 +549,10 @@ class Canvas(wx.Window):
     def getConfigfilepath(self):
         """Depending on os, get the path to the config file"""
         #if os.name == 'nt':
-        if self.platform == 'windows':
+        if self.frame.platform == 'windows':
             return 'config.ini'
         #elif os.name == 'posix':
-        elif self.platform in ['linux', 'mac']: #TODO: same for mac ?
+        elif self.frame.platform in ['linux', 'mac']: #TODO: same for mac ?
             return os.path.expanduser('~/.eepee.rc')
 
     
