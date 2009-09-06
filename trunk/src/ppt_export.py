@@ -1,3 +1,4 @@
+import glob
 try:
     import shutil
     import commands
@@ -51,6 +52,22 @@ class Converter_MS(Converter):
         powerpoint.Presentations[1].Close()
         powerpoint.Quit()
 
+    def renumber(self, folder):
+        """Renumber the jpg files in the folder
+        so that the numbered files are sorted correctly
+        """
+        infiles = glob.glob(os.path.join(folder, '*.jpg'))
+        print 'files are', infiles
+        for filename in infiles:
+            number_prefix = os.path.splitext(os.path.basename(filename))[0]
+            try:
+                newfilename = os.path.join(os.path.dirname(filename),
+                                       '%.4d.jpg' %(int(number_prefix)))
+                shutil.move(filename, newfilename)
+            except ValueError:
+                pass
+
+
 class Converter_OO(Converter):
     """converter using Openoffice on linux"""
     def __init__(self, path_to_presentation, target_folder):
@@ -80,3 +97,13 @@ class Converter_OO(Converter):
         # delete presentation
         os.remove(tmp_presentation)
         os.remove(pdf_presentation)
+
+
+def test():
+    testfolder = '/data/tmp/test'
+    converter = Converter_MS('dummy', 'dummy')
+    converter.renumber(testfolder)
+
+
+if __name__ == '__main__':
+    test()
