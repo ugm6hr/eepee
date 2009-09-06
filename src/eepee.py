@@ -4,6 +4,7 @@ from __future__ import division
 import sys, os, copy
 import shutil
 import glob
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -11,9 +12,8 @@ except ImportError:
 
 import Image
 import wx
-import tempfile
-
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
+import tempfile
 
 from customrubberband import RubberBand
 from geticons import getBitmap
@@ -93,7 +93,6 @@ class MyFrame(wx.Frame):
                           style = wx.DEFAULT_FRAME_STYLE)
         self.Maximize()
         self.platform = self.getPlatform()
-        print 'platform is ', self.platform        
         #--------Set up Splitter and Notebook----------------------------------
         ## SPLITTER - contains drawing panel and playlist
         ## basepanel contains the splitter  
@@ -310,7 +309,6 @@ class MyFrame(wx.Frame):
             self.splitter.SetSashPosition(self.GetSize()[0] - 160, True)
         else:
             if self.canvas.show_fullscreen_dialog:
-                print 'show full screen is true'
                 self.show_fscreen_help()
             self.ShowFullScreen(True, style=wx.FULLSCREEN_ALL)
             self.splitter.Unsplit()
@@ -467,15 +465,13 @@ class MyFrame(wx.Frame):
             
         self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
                                                 self.playlist.nowshowing])
-        #self.BlitSelectedImage()
        
     def JumptoImage(self,event):
         """On double clicking in listbox select that image"""
         self.CleanUp()
-        self.playlist.nowshowing = self.listbox.GetSelection()
+        self.playlist.nowshowing = self.listbox.GetNextSelected(-1)
         self.displayimage.LoadAndDisplayImage(self.playlist.playlist[
                                             self.playlist.nowshowing])
-        #self.BlitSelectedImage()
     
     def CleanUp(self):
         """Clean up on closing an image"""
@@ -497,7 +493,7 @@ class MyFrame(wx.Frame):
 class AutoWidthListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
     def __init__(self, parent, *args, **kwargs):
         wx.ListCtrl.__init__(self, parent, -1,
-                             style=wx.LC_REPORT|wx.LC_EDIT_LABELS)
+                             style=wx.LC_REPORT|wx.LC_EDIT_LABELS|wx.LC_SINGLE_SEL)
         ListCtrlAutoWidthMixin.__init__(self)
 
         
@@ -978,15 +974,14 @@ class DisplayImage():
 
         # save data if it has changed
         if self.data != self.loaded_data:
-
             try:
                 #if os.name == 'posix':
-                if self.platform in ['linux', 'mac']:
+                if self.frame.platform in ['linux', 'mac']:
                     pickle.dump(self.data, open(self.datafile, 'w'))
 
                 # in windows, set file attribute to hidden
                 #elif os.name == 'nt':
-                elif self.platform == 'windows':
+                elif self.frame.platform == 'windows':
                     ## have to remove the hidden file because it doesnt have
                     ## write permission
                     if os.path.exists(self.datafile):
@@ -1151,7 +1146,8 @@ class Caliper():
         self.y3 = self.canvas.maxheight
         
         self.pen = wx.Pen(self.canvas.caliper_color, self.canvas.caliper_width, wx.SOLID)
-        self.hittable_pen = wx.Pen(self.canvas.active_caliper_color, self.canvas.caliper_width, wx.SOLID)
+        self.hittable_pen = wx.Pen(self.canvas.active_caliper_color,
+                                   self.canvas.caliper_width, wx.SOLID)
         
         # 1 - positioning first caliperleg, 2 - positioning second caliperleg
         # 3 - positioned both caliperlegs, 4 - repositioning whole caliper
@@ -1182,7 +1178,6 @@ class Caliper():
         dc.DrawLine(x1, y2, x2, y2) # horiz
         
         self.MeasureAndDisplay(dc)
-        
         dc.EndDrawing()
         
     def MeasureAndDisplay(self, dc):
@@ -1269,7 +1264,6 @@ class Caliper():
             if not self.was_hittable:
                 self.MarkAsHittable(2)
             return 2 #second leg
-        
         
         elif abs(worldy - self.y2) < self.hitrange and \
              sorted([worldx, self.x1, self.x2])[1] == worldx:
@@ -1387,7 +1381,6 @@ class Doodle():
         self.canvas = parent
         self.pen =wx.Pen(self.canvas.doodle_color, self.canvas.doodle_width, wx.SOLID)
         
-        
     def Draw(self, dc):
         """Draw the lines for the doodle"""
         dc.SetPen(self.pen)
@@ -1429,12 +1422,9 @@ class Doodle():
             # stored lines will have world coords - draw as pixels
             self.current_line.append(coords)
             self.DrawLine((x1, y1, x2, y2))
-            #self.pos = pos
-            #dc.EndDrawing()
+
             self.oldx = mousex
             self.oldy = mousey
-            
-            #self.canvas._doodlechanged = True
     
         elif event.LeftUp():
             """End current line"""
