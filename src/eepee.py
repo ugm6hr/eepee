@@ -220,8 +220,8 @@ class MyFrame(wx.Frame):
         ## list of tools - can be made editable in preferences
         # (checktool?, id, "short help", "long help", "getimage name")
         tools = [
-        (False, ID_OPEN, "Open", "Open file", "open"),
-        (False, ID_SAVE, "Save", "Save file", "save"),
+        #(False, ID_OPEN, "Open", "Open file", "open"),
+        #(False, ID_SAVE, "Save", "Save file", "save"),
         (True, "SEP", '', '', ''),
         (False, ID_ROTATELEFT, "Rotate", "Rotate image left", "rotate_left"),
         (False, ID_ROTATERIGHT, "Rotate", "Rotate image right", "rotate_right"),
@@ -245,6 +245,10 @@ class MyFrame(wx.Frame):
         self.toolbar = self.CreateToolBar(wx.TB_HORIZONTAL|wx.NO_BORDER|
                                           wx.TB_FLAT)
         self.toolbar.SetToolBitmapSize((22,22))
+
+        # use native icons on each platform for open and save only
+        self.toolbar.AddLabelTool(ID_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN))
+        self.toolbar.AddLabelTool(ID_SAVE, "Save", wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE))
 
         for tool in tools:
             checktool, id, shelp, lhelp, bmp = tool
