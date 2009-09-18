@@ -7,8 +7,97 @@ a plain text file.
 The selector is called as a modal dialog and can be initiated with
 a base list or an empty list. """
 
+##################
+## Drag n drop implementation is from the wxpython wiki - http://wiki.wxpython.org/ListControls
+###################
+
 import wx, os, sys
+import string
 from geticons import getBitmap
+
+class DragList(wx.ListCtrl):
+    def __init__(self, *arg, **kw):
+        if kw.has_key('style') and ((kw['style']&wx.LC_LIST) or (kw['style']&wx.LC_REPORT)):
+            kw['style'] |= wx.LC_SINGLE_SEL
+        else:
+            kw['style'] = wx.LC_SINGLE_SEL|wx.LC_LIST
+
+        wx.ListCtrl.__init__(self, *arg, **kw)
+
+        self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)
+        dt = ListDrop(self._insert)
+        self.SetDropTarget(dt)
+
+    def _startDrag(self, e):
+        """ Put together a data object for drag-and-drop _from_ this list. """
+
+        # Create the data object: Just use plain text.
+        data = wx.PyTextDataObject()
+        idx = e.GetIndex()
+        text = self.GetItem(idx).GetText()
+        data.SetText(text)
+
+        # Create drop source and begin drag-and-drop.
+        dropSource = wx.DropSource(self)
+        dropSource.SetData(data)
+        res = dropSource.DoDragDrop(flags=wx.Drag_DefaultMove)
+
+        # If move, we want to remove the item from this list.
+        if res == wx.DragMove:
+            # Find correct position.
+            pos = self.FindItem(idx, text)
+            self.DeleteItem(pos)
+
+    def _insert(self, x, y, text):
+        """ Insert text at given x, y coordinates --- used with drag-and-drop. """
+
+        # Clean text.
+        text = filter(lambda x: x in (string.letters + string.digits + string.punctuation + ' '), text)
+
+        # Find insertion point.
+        index, flags = self.HitTest((x, y))
+        if index == wx.NOT_FOUND:
+            if flags & wx.LIST_HITTEST_NOWHERE:
+                index = self.GetItemCount()
+            else:
+                return
+
+        # Get bounding rectangle for the item the user is dropping over.
+        rect = self.GetItemRect(index)
+
+        # If the user is dropping into the lower half of the rect, we want to insert _after_ this item.
+        if y > (rect.y + rect.height/2):
+            index = index + 1
+
+        self.InsertStringItem(index, text)
+
+class ListDrop(wx.PyDropTarget):
+    """ Drop target for simple lists. """
+
+    def __init__(self, setFn):
+        """ Arguments:
+         - setFn: Function to call on drop.
+        """
+        wx.PyDropTarget.__init__(self)
+
+        self.setFn = setFn
+
+        # specify the type of data we will accept
+        self.data = wx.PyTextDataObject()
+        self.SetDataObject(self.data)
+
+    # Called when OnDrop returns True.  We need to get the data and
+    # do something with it.
+    def OnData(self, x, y, d):
+        # copy the data from the drag source to our data object
+        if self.GetData():
+            self.setFn(x, y, self.data.GetText())
+
+        # what is returned signals the source what to do
+        # with the original data (move, copy, etc.)  In this
+        # case we just return the suggested value given to us.
+        return d
+
 
 class PlayListSelector(wx.Dialog):
     def __init__(self, parent, playlist=[]):
@@ -20,8 +109,10 @@ class PlayListSelector(wx.Dialog):
                                     wx.TAB_TRAVERSAL)
         self.listpanel = wx.Panel(self, -1, style=wx.SUNKEN_BORDER)
         
-        self.playlistctrl = wx.ListCtrl(self.listpanel, -1, style=wx.LC_REPORT|
-                                    wx.LC_SINGLE_SEL | wx.SUNKEN_BORDER)
+        # self.playlistctrl = wx.ListCtrl(self.listpanel, -1, style=wx.LC_REPORT|
+        #                             wx.LC_SINGLE_SEL | wx.SUNKEN_BORDER)
+        self.playlistctrl = DragList(self.listpanel, -1,  style=wx.LC_REPORT|
+                                     wx.LC_SINGLE_SEL | wx.SUNKEN_BORDER)
         self.playlistctrl.InsertColumn(0, "Path", width=280)
         self.playlistctrl.InsertColumn(1, "Name", width=100)
         
@@ -34,7 +125,7 @@ class PlayListSelector(wx.Dialog):
         self.downbutton = wx.BitmapButton(self.controlpanel, -1,
                                 getBitmap("down"))
         self.savebutton = wx.BitmapButton(self.controlpanel, -1,
-                                getBitmap("save"))
+                                          wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE))
         self.donebutton = wx.BitmapButton(self.controlpanel, -1,
                                 getBitmap("quit"))
 
