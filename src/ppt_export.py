@@ -1,16 +1,13 @@
 import glob
-try:
-    import shutil
-    import commands
-    import os
-    import comtypes.client
+import shutil
+import commands
+import os
 
+try:
+    import comtypes.client
 except:
     pass
 
-
-# on windows, get the full path to the gs exe
-gspath = ''
 
 class ConverterError(Exception):
     """all exceptions related to the conversion """
@@ -36,7 +33,7 @@ class Converter_MS(Converter):
     """converter using MS office"""
     def __init__(self, path_to_presentation, target_folder):
         Converter.__init__(self, path_to_presentation, target_folder)
-
+        
     def convert(self):
         """use comtypes to communicate with MSoffice"""
         try:
@@ -49,6 +46,7 @@ class Converter_MS(Converter):
         except:
             raise ConverterError("Cannot open presentation")
         powerpoint.ActivePresentation.Export(self.target_folder, "JPG")
+        self.renumber(self.target_folder)
         powerpoint.Presentations[1].Close()
         powerpoint.Quit()
 
