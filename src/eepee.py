@@ -174,7 +174,7 @@ class MyFrame(wx.Frame):
         
     def _buildMenuBar(self):
         """Build the menu bar"""
-        MenuBar = wx.MenuBar()
+        self.MenuBar = wx.MenuBar()
 
         file_menu = wx.Menu()
         file_menu.Append(ID_OPEN, "&Open\tCtrl-O","Open file")
@@ -206,14 +206,23 @@ class MyFrame(wx.Frame):
         help_menu = wx.Menu()
         help_menu.Append(ID_ABOUT, "About", "About this application")
         help_menu.Append(ID_KEYS, 'List keyboard shortcuts', 'Shortcuts')
+
+        # popopu menu to appear with right click
+        self.popup_menu = wx.Menu()
+        self.popup_menu.Append(ID_ROTATELEFT, "Rotate Left", '')
+        self.popup_menu.Append(ID_ROTATERIGHT, "Rotate Right", '')
+        self.popup_menu.Append(ID_CROP, "Crop", "")
+        self.popup_menu.Append(ID_CALIPERREMOVE, "Remove all Calipers", '')
+        self.popup_menu.Append(ID_SAVE, "Save image", '')        
+
         
-        MenuBar.Append(file_menu, "&File")
-        MenuBar.Append(edit_menu, "&Edit")
-        MenuBar.Append(image_menu, "&Image")
-        MenuBar.Append(playlist_menu, "&Playlist")
-        MenuBar.Append(help_menu, "&Help")
+        self.MenuBar.Append(file_menu, "&File")
+        self.MenuBar.Append(edit_menu, "&Edit")
+        self.MenuBar.Append(image_menu, "&Image")
+        self.MenuBar.Append(playlist_menu, "&Playlist")
+        self.MenuBar.Append(help_menu, "&Help")
         
-        self.SetMenuBar(MenuBar)
+        self.SetMenuBar(self.MenuBar)
 
     def _buildToolBar(self):
         """Build the toolbar"""
@@ -628,6 +637,8 @@ class Canvas(wx.Window):
                 if caliper:
                     self.caliperlist.remove(caliper)
                     self._FGchanged = True
+                # else, popup menu
+                self.frame.PopupMenu(self.frame.popup_menu, event.GetPosition())
         else:
             pass
         

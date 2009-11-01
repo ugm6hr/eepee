@@ -49,6 +49,7 @@ class Converter_MS(Converter):
         self.renumber(self.target_folder)
         powerpoint.Presentations[1].Close()
         powerpoint.Quit()
+        self.renumber(self.target_folder)
 
     def renumber(self, folder):
         """Renumber the jpg files in the folder
