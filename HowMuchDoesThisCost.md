@@ -1,0 +1,5 @@
+This software does not cost anything. It is not limited in functionality or in the time that you are allowed to use it. The right term for the category that this software belongs to is 'opensource', not freeware or shareware. Many in the Windows world may still not be aware of the [open source movement](http://en.wikipedia.org/wiki/Free_software_movement).
+
+The underlying principle in opensource is that the code in which the software is written ('source') is available openly. The user has full access to the code and is allowed to modify it to use his needs and even distribute the modified version freely. The openness makes such software safe, more stable and more flexible to use. Some of the best software today is opensource (Firefox, Linux, Openoffice, Gimp, to name a few) and there is little doubt that this is building into a revolution.
+
+To see the code for this software, you can download the archive (.tar.gz) and extract. To view the code with the latest changes, you can browse the subversion repository (in the 'Source tab').
